@@ -1,0 +1,34 @@
+{
+  "key": "APP-5601",
+  "fields": {
+    "summary": "Hide skeleton loader for repeat visits",
+    "components": [{"name": "Android"}],
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {"level": 2},
+          "content": [{"type": "text", "text": "Background"}]
+        },
+        {
+          "type": "paragraph",
+          "content": [{"type": "text", "text": "On repeat visits, the skeleton loader briefly flashes before content renders. This is jarring."}]
+        },
+        {
+          "type": "heading",
+          "attrs": {"level": 2},
+          "content": [{"type": "text", "text": "Akzeptanzkriterien"}]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {"type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Skeleton is hidden if cached data is present on visit"}]}]},
+            {"type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Cache TTL respected"}]}]}
+          ]
+        }
+      ]
+    }
+  }
+}

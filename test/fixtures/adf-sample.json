@@ -1,0 +1,35 @@
+{
+  "type": "doc",
+  "version": 1,
+  "content": [
+    {
+      "type": "heading",
+      "attrs": {"level": 2},
+      "content": [{"type": "text", "text": "Hintergrundinformationen"}]
+    },
+    {
+      "type": "paragraph",
+      "content": [{"type": "text", "text": "Es ist wichtig zu wissen, dass aktuell der Bilder-sortieren-Screen vor dem Buchart-wählen-Screen kommt."}]
+    },
+    {
+      "type": "heading",
+      "attrs": {"level": 2},
+      "content": [{"type": "text", "text": "User Story"}]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {"type": "text", "text": "Als Nutzer möchte ich "},
+        {"type": "text", "text": "kurze", "marks": [{"type": "strong"}]},
+        {"type": "text", "text": " Wartezeiten."}
+      ]
+    },
+    {
+      "type": "bulletList",
+      "content": [
+        {"type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Bilder auswählen"}]}]},
+        {"type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Buchart wählen"}]}]}
+      ]
+    }
+  ]
+}
