@@ -124,32 +124,26 @@ If any pre-flight fails, return `{result: "stuck", reason: "<pre-flight failure>
 
 ## Phase notes — what you can actually do today
 
-| Inner skill | Phase 1 | Phase 2 | Phase 3 (NOW) | Phase 4 |
+| Inner skill | Phase 1 | Phase 2 | Phase 3 | Phase 4 (NOW) |
 |---|---|---|---|---|
 | `smith:claim` | logs intended | **live** when dry_run=false | (no change) | (no change) |
 | `smith:enrich` | logs intended | **live brief**; Explore deferred to 2.x | (no change) | (no change) |
-| `smith:pipeline` | placeholder | placeholder | **live Anderson critic loop**; gates real | (no change) |
-| `smith:pr` | placeholder | placeholder | placeholder | live PR open |
+| `smith:pipeline` | placeholder | placeholder | **live Anderson critic loop** | (no change) |
+| `smith:pr` | placeholder | placeholder | placeholder | **live PR open** (success + WIP-stuck) |
 
-As of Phase 3, the spec/plan/diff gates each run a real bounded
-mailbox dialogue with Anderson. Gates may now legitimately fail
-(`{result: "stuck"}`), unlike Phase 2 where they always passed
-trivially.
+As of Phase 4, Smith's end-to-end flow is fully live when run without
+`--dry-run`:
 
-The big consequence: running `/smith:implement APP-XXXX` **without**
-`--dry-run` performs real JIRA writes (status transition + label
-add), creates a real `task/*` branch, AND now commits a real spec +
-plan + impl to the worktree (subject to Anderson's review). It still
-does NOT push the branch or open a PR (Phase 4).
+- Real JIRA claim (transition + label add)
+- Real worktree creation on `task/<key>-<slug>`
+- Real brief written to `.smith/briefs/`
+- Real three-gate pipeline with bounded Anderson critic dialogue
+- Real `git push` + `gh pr create --draft` on the success path
+- Real WIP-stuck PR (with artefact promotion) on the stuck path
 
-This leaves the ticket in an in-between state: JIRA in `In Progress`
-with `smith-implementing` label, worktree with committed work, no PR.
-To revert manually:
+In either outcome, the operator has a draft PR to land or close out
+without manually reverting JIRA state.
 
-```
-acli jira workitem transition --key APP-XXX --status "Ready for Development" --yes
-acli jira workitem edit --key APP-XXX --remove-labels smith-implementing --yes
-git worktree remove .smith/worktrees/<key>
-```
-
-Prefer `--dry-run` until Phase 4 closes the loop with real PR creation.
+`--dry-run` still exists and exercises the orchestration without any
+external side effects. Useful for sanity-checking a candidate ticket
+before letting Smith commit and push.

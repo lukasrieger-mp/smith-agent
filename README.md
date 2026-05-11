@@ -107,19 +107,21 @@ docs/plans/                  One plan per phase
 
 ## Status
 
-Phase 3 of 7 done. Live: plugin loads, monitors run, hook fires,
-`smith:claim` performs real JIRA writes, `smith:enrich` produces a real
-brief, `smith:pipeline` drives a real three-gate critic dialogue with
-Anderson (bounded 3-round per gate with divergence detection).
-Placeholder: `smith:pr` (Phase 4). Deferred sub-phase: Phase 2.x —
-Explore subagent integration for the brief's affected-files analysis.
+Phase 4 of 7 done. Smith's end-to-end ticket-implementation flow is
+fully live (gated on `--dry-run`):
 
-See [`docs/spec.md`](docs/spec.md) Section 16 for the full phase
-decomposition.
+- `smith:claim` — real JIRA transition + label add
+- `smith:enrich` — real brief writing (Explore subagent in 2.x)
+- `smith:pipeline` — real three-gate Anderson critic dialogue
+- `smith:pr` — real `git push` + `gh pr create --draft`, both success
+  and WIP-stuck paths
 
-**Practical operator advice today**: prefer `/smith:implement APP-XXXX
---dry-run` until Phase 4 lands. Without `--dry-run`, Smith WILL move
-the ticket's JIRA state, create a real branch, and commit a real
-spec + plan + impl into the worktree — but won't open a PR, leaving
-you to either pick up the work manually or revert the JIRA state by
-hand.
+Operators ending a run get a draft PR either way — no manual JIRA
+cleanup needed. `--dry-run` still works for sanity checks.
+
+Remaining phases:
+- Phase 5 — PR-fix mode (Smith dispatch mode #2) + per-PR worktree
+  fan-out under the 2-Smith cap
+- Phase 6 — Live watchdog + 2-Smith concurrency + autonomous first run
+
+See [`docs/spec.md`](docs/spec.md) Section 16 for the full decomposition.

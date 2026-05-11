@@ -1359,8 +1359,14 @@ decompose into phases that can be built and verified independently:
    validates Anderson's replies against a schema script before acting on
    them. Three-gate pipeline with bounded 3-round dialogue + divergence
    detection per Section 5.5. Gates may legitimately reject Smith's work.
-5. **Phase 4 — Live `smith:pr` + WIP-stuck path.** Both success and stuck
-   PR creation, artifact promotion on stuck, JIRA label management.
+5. **Phase 4 — Live `smith:pr` + WIP-stuck path. ✅ DONE.** Both success
+   and stuck PR creation. Success path: push + draft PR + remove
+   `smith-implementing` label. WIP-stuck path: artefact promotion
+   (`scripts/promote_smith_artifacts.sh` copies brief from `.smith/`
+   to a committed location and packages any uncommitted partial work as
+   a single wip commit), push, draft PR with `needs-human-attention`
+   label, JIRA label swap to `auto-impl-failed`. No JIRA comments
+   anywhere (spec Section 6.6).
 6. **Phase 5 — PR-fix mode (Smith dispatch mode #2) + `smith:pr-watch`.**
    Per-PR worktrees, comment polling, fix-cycle counter, fan-out under the
    2-cap.

@@ -72,14 +72,14 @@ human will need.
 
 1. **Promote artefacts** so the next human sees them in the PR:
    ```
-   bash $CLAUDE_PLUGIN_ROOT/scripts/promote_smith_artifacts.sh
-   git add docs/superpowers/specs/<ticket>-brief.md \
-           docs/superpowers/specs/<…>-design.md \
-           docs/superpowers/plans/<…>.md
-   git commit -m "wip(smith): handoff artifacts for $ticket"
+   bash $CLAUDE_PLUGIN_ROOT/scripts/promote_smith_artifacts.sh "$ticket"
    ```
-   (`promote_smith_artifacts.sh` is a Phase 4 deliverable; in Phase 1
-   substitute a manual `cp` of brief/spec/plan into committed paths.)
+   This script copies the brief from `.smith/briefs/<ticket>-brief.md`
+   into the tracked location `docs/superpowers/specs/<ticket>-brief.md`,
+   and commits any uncommitted partial work as a single
+   `wip(smith): partial work at point of stuck — <ticket>` commit.
+   Spec and plan files were already committed per-gate by
+   `smith:pipeline`, so they ride along automatically.
 2. Push the branch (still no force):
    ```
    git push -u origin "$branch"
@@ -128,16 +128,44 @@ human will need.
 - The bash-guard hook (Section 5.7) is a backstop: any of the above
   rules violated by your Bash command will get denied.
 
-## Phase 1 placeholder behaviour
+## Workflow gated on dry_run
 
-Like the other inner-teammate skills, in Phase 1 this is dry-run-
-equivalent. Instead of running `gh pr create` and `acli ... edit`, log
-the intended commands to `<target>/.smith/log.txt` and return a fake
-PR URL: `dry-run://pr/$ticket`. The push step is also skipped — the
-worktree's commits stay local.
+The two paths described above (Success and WIP-stuck) are the **live**
+Phase 4 behaviour, executed when `dry_run = false` in your spawn
+prompt. When `dry_run = true`, skip every external side effect:
 
-Phase 4 of the spec replaces the placeholder with the live actions
-above.
+- Don't `git push`
+- Don't `gh pr create`
+- Don't touch JIRA labels
+- Don't invoke `promote_smith_artifacts.sh` (the wip commit it makes is
+  also a side effect)
+
+Instead, log the intended actions to `<target>/.smith/log.txt`:
+
+```
+<ts> | smith:pr | $ticket | would-push | branch=$branch
+<ts> | smith:pr | $ticket | would-create-draft-pr | title=<title>
+<ts> | smith:pr | $ticket | would-label-pr | labels=smith-authored
+<ts> | smith:pr | $ticket | would-remove-jira-label | label=smith-implementing
+```
+
+…and return `dry-run://pr/$ticket` as the PR URL in your outcome JSON.
+
+## Hard rules (unchanged across modes)
+
+- **Always `--draft`.** Never `gh pr ready`. Never `gh pr merge`.
+- **Always `--base develop`.** Never against `main` or release branches.
+- **Never force-push.** Push only adds commits. If push fails because
+  the remote moved, abort with `{result: "error"}` — let the lead retry.
+- The bash-guard hook (Section 5.7) is a backstop: any of the above
+  rules violated by your Bash command will get denied at runtime.
+
+## On error
+
+Any failure (push rejected, gh pr create errors, acli failure) → return
+`{result: "error", reason}`. Lead retries once with a fresh teammate
+pair. If the retry also fails, hand off to WIP-stuck (this very skill,
+Path B, on retry).
 
 ## On error
 
