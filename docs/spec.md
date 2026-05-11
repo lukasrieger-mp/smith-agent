@@ -443,6 +443,21 @@ Smith-internal limits (`max_concurrent_smiths`, `max_critic_rounds`,
 exposed via `userConfig` — they're load-bearing safety ceilings, not
 per-team preferences.
 
+#### 5.8.1 Caveat — `--plugin-dir` does not trigger the userConfig prompt
+
+In development (when Smith is loaded via `claude --plugin-dir
+~/StudioProjects/smith-agent` rather than via a marketplace install), Claude
+Code does **not** prompt the operator for the `userConfig` values. The
+`CLAUDE_PLUGIN_OPTION_*` env vars are simply absent, and `smith_config.sh`
+falls through to the hardcoded defaults baked into the script. For the
+operator's own setup those defaults are correct.
+
+Adopters who set non-default values either need to (a) export
+`CLAUDE_PLUGIN_OPTION_<KEY>` env vars manually before `claude --plugin-dir`,
+(b) hand-edit `<target>/.smith/config.json` after first load, or (c) wait
+until Smith is published to a marketplace — at which point `/plugin install`
+will trigger the prompt as documented.
+
 ## 6. JIRA integration
 
 ### 6.1 Candidate query (JQL)
