@@ -111,8 +111,35 @@ existing remote branch (the PR's head) — you don't re-create it.
       ```
       ./scripts/run-silent.sh "Quality checks" "./scripts/quality-check.sh"
       ```
-   e. Commit with a message referencing the thread:
-      `fix(smith): address review thread <thread-id> on PR #<N>`.
+   e. Commit with a message that's readable in a PR commit list. The
+      title references the file location (which GitHub shows in the
+      review UI); the GraphQL thread ID and the reviewer's first
+      comment go in the body for traceability:
+
+      ```
+      fix(smith): <path>:<line> per <author>'s review (PR #<N>)
+
+      <first 200 chars of the reviewer's comment body, single line>
+
+      Thread: <thread-id>
+      ```
+
+      Example:
+      ```
+      fix(smith): src/foo.kt:42 per alice's review (PR #891)
+
+      Consider null safety here — the cast on line 42 will NPE when
+      the upstream returns an empty Optional.
+
+      Thread: PRRT_kwDON0tWhM6BI4rt
+      ```
+
+      Why this shape: GraphQL thread IDs (`PRRT_...`) don't appear
+      anywhere in GitHub's UI, so a title like "address review thread
+      PRRT_kwDON0tWhM6BI4rt" is unreadable to a human reviewer.
+      `<path>:<line>` matches what the GitHub review pane shows. The
+      ID still lives in the body so we can mark the thread resolved
+      programmatically later if needed.
 3. Once all addressable threads are handled: invoke Anderson one final
    time (mode=diff) for a review of your fix commits. Standard
    mailbox dialogue per Section 8.4.
