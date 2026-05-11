@@ -107,26 +107,40 @@ docs/plans/                  One plan per phase
 
 ## Status
 
-Phase 5 of 7 done. Both Smith dispatch modes are live:
+**Phase 6 of 7 done. Smith is functionally end-to-end autonomous.**
 
-**Ticket mode** — implementing a JIRA ticket end-to-end:
-- `smith:claim` — JIRA transition + label add
-- `smith:enrich` — brief writing (Explore subagent deferred to 2.x)
-- `smith:pipeline` — three-gate Anderson critic dialogue
-- `smith:pr` — `git push` + `gh pr create --draft` (success + WIP-stuck)
+The full flow:
 
-**PR-fix mode** — addressing reviewer comments on Smith's draft PRs:
-- Lead checks out PR's head ref into a worktree
-- Smith fetches unresolved threads, fixes each, runs quality checks,
-  commits per-thread
-- Per-thread cycle counter caps at 5; threads hitting the cap → PR
-  tagged `needs-human-attention`
-- Anderson reviews the final diff before push
+1. Operator runs `claude --plugin-dir ~/StudioProjects/smith-agent`
+   from inside a target repo
+2. Operator invokes `/smith:watchdog` once — monitors start
+3. From this point: when a new eligible JIRA candidate appears (or
+   reviewer comments arrive on a Smith-authored PR), the watchdog
+   dispatches a Smith+Anderson teammate pair within the 2-cap
+4. Smith implements the ticket (or addresses comments) with Anderson
+   critiquing at each gate, ending with a draft PR
 
-Either mode ends with a draft PR the operator can land or close.
+Both dispatch modes are live:
 
-Remaining: **Phase 6** — wire the watchdog's notification-reaction
-rules to actually dispatch teammate pairs respecting the 2-Smith cap.
-After Phase 6 the watchdog runs autonomously.
+- **Ticket mode** — claim → enrich → pipeline (with 3-gate Anderson
+  critic) → PR open (success or WIP-stuck)
+- **PR-fix mode** — checkout PR worktree → fetch unresolved threads →
+  fix each (cap 5/thread) → Anderson diff review → push
+
+Autonomous dispatch (Phase 6): the watchdog session reacts to monitor
+notifications by:
+- Counting active pairs via `active_smiths.sh count`
+- Picking top eligible JIRA key via `pick_top_candidate.sh`
+- Spawning the teammate pair via the agent-teams API
+- Registering the pair in `active_smiths.sh` so the cap holds
+
+Operator interventions still possible: `/smith:implement APP-XXXX`
+manual override; `touch .smith/STOP` kill switch (~2 sec response).
+
+Deferred:
+- **Phase 2.x** — Explore subagent integration in `smith:enrich` (the
+  brief's "Smith's reading" section is currently a placeholder)
+- Integration testing against real tickets — the only way to validate
+  the LLM-driven critic dialogue and orchestration
 
 See [`docs/spec.md`](docs/spec.md) Section 16 for the full decomposition.

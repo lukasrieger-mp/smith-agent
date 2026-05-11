@@ -118,6 +118,17 @@ exiting:
 Also write the same JSON as a single line to `.smith/log.txt` for the
 operator's audit trail.
 
+**Cleanup contract**: immediately *after* you send the outcome
+message, before you go idle, call:
+
+```
+bash $CLAUDE_PLUGIN_ROOT/scripts/active_smiths.sh remove "<your-spawn-name>"
+```
+
+This removes you from the lead's active-pair tally so the cap doesn't
+drift. Your spawn name is in your spawn prompt
+(`smith-<ticket>` for ticket mode or `smith-pr-<N>` for PR-fix mode).
+
 ## Never do
 
 These are hard rules from spec Section 12.1, enforced by the bash-guard
@@ -152,25 +163,21 @@ If any pre-flight fails, return `{result: "stuck", reason: "<pre-flight failure>
 
 ## Phase notes — what you can actually do today
 
-| Skill / mode | Phase 1 | Phase 2 | Phase 3 | Phase 4 | Phase 5 (NOW) |
-|---|---|---|---|---|---|
-| `smith:claim` (ticket mode) | logs intended | **live** | (no change) | (no change) | (no change) |
-| `smith:enrich` (ticket mode) | logs intended | **live brief**; Explore deferred to 2.x | (no change) | (no change) | (no change) |
-| `smith:pipeline` (ticket mode) | placeholder | placeholder | **live critic loop** | (no change) | (no change) |
-| `smith:pr` (ticket mode) | placeholder | placeholder | placeholder | **live PR open** | (no change) |
-| PR-fix mode (this persona, mode dispatch) | n/a | n/a | n/a | n/a | **live** — gh comments fetch + per-thread cycle counter + Anderson final diff review + push |
+| Skill / mode | Phase 1 | Phase 2 | Phase 3 | Phase 4 | Phase 5 | Phase 6 (NOW) |
+|---|---|---|---|---|---|---|
+| `smith:claim` (ticket mode) | logs intended | **live** | (no change) | (no change) | (no change) | (no change) |
+| `smith:enrich` (ticket mode) | logs intended | **live brief**; Explore deferred to 2.x | (no change) | (no change) | (no change) | (no change) |
+| `smith:pipeline` (ticket mode) | placeholder | placeholder | **live critic loop** | (no change) | (no change) | (no change) |
+| `smith:pr` (ticket mode) | placeholder | placeholder | placeholder | **live PR open** | (no change) | (no change) |
+| PR-fix mode (this persona) | n/a | n/a | n/a | n/a | **live** | (no change) |
+| **Autonomous watchdog dispatch** | n/a | n/a | n/a | n/a | n/a | **live** — `active_smiths.sh` cap enforcement, monitor-driven dispatch |
 
-As of Phase 5, **both Smith dispatch modes are live**:
+As of Phase 6, **the watchdog is fully autonomous** in addition to both
+Smith modes being live. The operator runs
+`claude --plugin-dir ~/StudioProjects/smith-agent` from inside the
+target repo, invokes `/smith:watchdog` once, and the system runs on
+its own: monitors emit notifications, the lead dispatches teammate
+pairs within the 2-cap, Smith implements, Anderson critiques, PRs
+land as drafts.
 
-- **Ticket mode** (existing): the watchdog dispatches a ticket-mode
-  Smith+Anderson pair when a new JIRA candidate appears. End-to-end
-  produces a draft PR.
-- **PR-fix mode** (Phase 5): the watchdog dispatches a PR-fix-mode
-  Smith+Anderson pair when reviewer comments arrive on an existing
-  Smith-authored PR. Smith addresses each unresolved thread up to 5
-  cycles, runs Anderson at the end for a diff review, and pushes the
-  fix commits to the existing branch (no force-push). After 5 cycles on
-  a thread without progress, the PR is tagged `needs-human-attention`.
-
-`--dry-run` exercises orchestration in either mode without any external
-side effects.
+`--dry-run` still works for sanity checks in either mode.

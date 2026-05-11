@@ -1369,13 +1369,21 @@ decompose into phases that can be built and verified independently:
    (per-thread cycle counter; tags PR `needs-human-attention` after 5
    cycles per spec Section 5.5). The legacy `skills/pr-watch/` was
    removed — the `pr-comments` monitor (Section 5.6) superseded it.
-7. **Phase 6 — `smith:watchdog` + `/loop` integration + 2-Smith
-   concurrency.** Lead's per-tick decision tree (Section 5.3). Manual
-   `/smith:implement` override path. First real autonomous run.
+7. **Phase 6 — Autonomous watchdog dispatch. ✅ DONE.** The watchdog
+   skill body in `skills/watchdog/SKILL.md` now contains the executable
+   runbook for every notification type (not just doctrine), backed by
+   two new scripts: `active_smiths.sh` (manages
+   `.smith/state/active-smiths.json` for cap enforcement) and
+   `pick_top_candidate.sh` (chooses the top eligible JIRA key not
+   already in flight). Smith's outcome contract gains a cleanup
+   requirement: call `active_smiths.sh remove <smith-name>` before
+   going idle. With Phases 2–6 complete, the system runs end-to-end
+   autonomously after a single `/smith:watchdog` invocation.
 
-Each phase is an implementation plan unto itself; one plan file per phase
-under `smith/docs/plans/YYYY-MM-DD-<phase>.md`. Phase 1 plan is already
-written.
+With Phase 6 done, all seven phases are complete. Smith is functionally
+end-to-end autonomous. Outstanding: Phase 2.x (Explore subagent for
+brief enrichment) and integration testing against real tickets to
+validate LLM-driven orchestration behaviour.
 
 ## 17. Source layout and packaging
 
@@ -1430,6 +1438,8 @@ modifications beyond the runtime state directory.
     promote_smith_artifacts.sh   ← WIP-stuck artefact promotion (Phase 4)
     gh_pr_unresolved_comments.sh ← PR-fix mode comment fetcher (Phase 5)
     pr_fix_cycle_inc.sh          ← per-thread cycle counter (Phase 5)
+    active_smiths.sh             ← watchdog cap enforcement state (Phase 6)
+    pick_top_candidate.sh        ← pick top eligible candidate (Phase 6)
   test/
     lib/assert.sh
     fixtures/                    JSON fixtures for script tests
