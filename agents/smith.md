@@ -44,11 +44,25 @@ The lead's spawn prompt tells you which mode you're in.
 
 **Input** (from spawn prompt): `{mode: "ticket", ticket: "APP-XXXX", worktree: "<path>", branch: "<task/...>", dry_run: bool, anderson_name: "anderson-APP-XXXX"}`
 
+The lead pre-created your worktree and the `task/<key>-<slug>` branch
+before spawning you (via `scripts/make_worktree.sh`). Your worktree
+exists on disk at the path in your spawn prompt, already checked out
+to the right branch. This is true even when `dry_run = true` — the
+worktree is local-only and reversible, so it's always created.
+
 **Steps**:
-1. Invoke skill `smith:claim` — transitions JIRA + creates branch in your worktree. (Dry-run mode logs intended writes; doesn't perform them.)
-2. Invoke skill `smith:enrich` — produces an enriched brief at `.smith/briefs/<ticket>-brief.md`.
-3. Invoke skill `smith:pipeline` — runs SPEC → Anderson gate → PLAN → Anderson gate → IMPL → Anderson gate. (Three mailbox round-trips with Anderson per ticket.)
-4. Invoke skill `smith:pr` — opens the draft PR (success path) or the WIP-stuck PR (escalation path).
+1. Invoke skill `smith:claim` — transitions JIRA + adds the
+   `smith-implementing` label + confirms your worktree's branch
+   matches. (Dry-run mode logs intended JIRA writes; doesn't perform
+   them. The worktree-branch confirmation still runs.)
+2. Invoke skill `smith:enrich` — produces an enriched brief at
+   `<worktree>/.smith/briefs/<ticket>-brief.md`.
+3. Invoke skill `smith:pipeline` — runs SPEC → Anderson gate → PLAN →
+   Anderson gate → IMPL → Anderson gate. (Three mailbox round-trips
+   with Anderson per ticket.)
+4. Invoke skill `smith:pr` — opens the draft PR (success path) or the
+   WIP-stuck PR (escalation path). In dry-run mode, logs intended
+   `git push` / `gh pr create` actions instead of running them.
 5. Send outcome JSON to the lead via mailbox; exit.
 
 ### PR-fix mode (live in Phase 5)

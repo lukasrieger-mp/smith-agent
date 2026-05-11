@@ -52,7 +52,7 @@ Examples:
    If the result is `ios`, abort with: "iOS-only ticket; Smith does not
    handle iOS work."
 
-## Worktree setup (skipped when --dry-run)
+## Worktree setup (always live, even in --dry-run)
 
 Compute the branch name:
 ```
@@ -63,15 +63,27 @@ branch=$(bash $CLAUDE_PLUGIN_ROOT/scripts/make_branch_name.sh "$ticket" "$summar
 
 Worktree path: `<target>/.smith/worktrees/<ticket-key-lowercased>/`
 
-In **normal mode**, create the worktree:
+Create the worktree unconditionally:
+
 ```
-git fetch origin develop
-git worktree add ".smith/worktrees/${ticket,,}" -b "$branch" origin/develop
+bash $CLAUDE_PLUGIN_ROOT/scripts/make_worktree.sh "$ticket" "$branch"
 ```
 
-In **--dry-run mode**, skip the worktree creation. Log the intended
-command to `.smith/log.txt` and continue with the placeholder worktree
-path so the spawn prompt has a value to embed.
+This is local-only and trivially reversible (`git worktree remove`
+later). The `--dry-run` flag gates only side effects that are visible
+*outside* the target repo (JIRA writes, git push, gh PR create) —
+local-only file/git operations stay live so the orchestration can
+actually walk end-to-end.
+
+Without this, Smith's spawn prompt would name a worktree path that
+doesn't exist on disk, and the inner skills (`smith:claim`,
+`smith:enrich`) would fail at their first `cd <worktree>` pre-flight.
+
+After the test, clean up if you want:
+```
+git worktree remove .smith/worktrees/<ticket-lowercased>
+git branch -D task/<ticket-lowercased>-<slug>   # local-only; never pushed in dry-run
+```
 
 ## Spawn the teammate pair
 
