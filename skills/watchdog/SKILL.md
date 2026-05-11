@@ -1,6 +1,6 @@
 ---
 name: watchdog
-description: Outer-session notification handler — fully live as of Phase 6. Runs in the watchdog lead session. Reacts to monitor notifications (smith.jira.new_candidates, smith.pr.new_comments, smith.stop.*) by dispatching Smith+Anderson teammate pairs within the 2-concurrency cap. Invoke as `/smith:watchdog` to arm the monitors.
+description: Outer-session notification handler. Reacts to monitor events (jira/pr/stop) by dispatching Smith+Anderson pairs within the 2-cap. Invoke as /smith:watchdog to arm.
 ---
 
 # Smith Watchdog (outer-session, live in Phase 6)

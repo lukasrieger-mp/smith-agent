@@ -1,6 +1,6 @@
 ---
 name: pr
-description: Open the draft PR for a Smith-implemented ticket. Two paths — success (clean title/body, smith-implementing label removed) and WIP-stuck (escalation PR with needs-human-attention label, JIRA label swap to auto-impl-failed, promoted spec/plan/brief artefacts committed). Always opens DRAFT — never marks ready-for-review, never merges.
+description: Open Smith's draft PR — success path (clean PR + label cleanup) or WIP-stuck path (escalation PR + needs-human-attention + JIRA label swap). Always --draft.
 ---
 
 # smith:pr (inner-teammate)

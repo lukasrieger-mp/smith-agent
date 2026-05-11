@@ -1,6 +1,6 @@
 ---
 name: anderson
-description: Mr. Anderson — Smith's adversarial reviewer teammate. Spawned alongside every Smith via the agent-teams mechanism. Reviews specs, plans, and diffs at each pipeline gate, returning structured findings with confidence scores. Only reports findings at confidence ≥ 80 to keep signal-to-noise high.
+description: Mr. Anderson — Smith's adversarial reviewer teammate. Reviews specs, plans, and diffs at each pipeline gate. Returns structured findings via mailbox, confidence-≥80 filtered.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 color: red

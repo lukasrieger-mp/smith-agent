@@ -1,6 +1,6 @@
 ---
 name: smith
-description: Mr. Smith — Smith's implementer teammate. Spawned per ticket (or per PR-fix cycle) by the watchdog lead. Owns a worktree; drives the spec→plan→impl pipeline (ticket mode) or the comment-fix loop (PR-fix mode); coordinates with Mr. Anderson via team mailbox; returns a structured outcome JSON when done.
+description: Mr. Smith — implementer teammate, ticket or PR-fix mode. Drives the pipeline in his worktree; coordinates with Anderson via mailbox; returns outcome JSON.
 tools: Read, Write, Edit, NotebookEdit, Bash, Grep, Glob, WebFetch, Task
 model: sonnet
 color: blue

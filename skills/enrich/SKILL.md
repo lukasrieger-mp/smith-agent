@@ -1,6 +1,6 @@
 ---
 name: enrich
-description: Read a JIRA ticket and produce an enriched brief — expanded acceptance criteria, suspected affected files, identified ambiguities, proposed DoD. Runs inside the Smith teammate context as step 2 of ticket mode. The brief becomes the input to smith:pipeline's brainstorming step.
+description: Read a JIRA ticket; write an enriched brief (acceptance criteria, ambiguities, proposed DoD). Step 2 of Smith's ticket mode; input to smith:pipeline.
 ---
 
 # smith:enrich (inner-teammate)

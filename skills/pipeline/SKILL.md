@@ -1,6 +1,6 @@
 ---
 name: pipeline
-description: The Smith pipeline. Runs inside the Smith teammate context as step 3 of ticket mode. Drives SPEC → Anderson → PLAN → Anderson → IMPL (TDD) → Anderson → verify, each gate as a mailbox round-trip with the Anderson teammate. Bounded to 3 critic rounds per gate with divergence detection. Commits per successful gate so partial progress is recoverable.
+description: Drive Smith's three-gate pipeline (SPEC → PLAN → IMPL) with bounded Anderson critic dialogue; commit per gate. Step 3 of ticket mode.
 ---
 
 # smith:pipeline (inner-teammate)

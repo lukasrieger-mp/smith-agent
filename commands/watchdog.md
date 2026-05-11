@@ -1,5 +1,5 @@
 ---
-description: Arm the autonomous Smith watchdog. Starts three background monitors (JIRA candidates, PR comments, kill switch). The watchdog session reacts to monitor notifications by dispatching Smith+Anderson teammate pairs within the 2-concurrency cap.
+description: Arm the autonomous Smith watchdog. Starts background monitors; lead reacts to notifications by dispatching teammate pairs within the 2-cap.
 ---
 
 # /smith:watchdog

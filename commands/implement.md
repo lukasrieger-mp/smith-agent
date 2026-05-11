@@ -1,5 +1,5 @@
 ---
-description: Manually dispatch a Smith+Anderson teammate pair to implement one specific JIRA ticket. Use `--dry-run` to drive the orchestration without external side effects.
+description: Dispatch a Smith+Anderson pair to implement one JIRA ticket. Use `--dry-run` for orchestration without external side effects.
 ---
 
 # /smith:implement

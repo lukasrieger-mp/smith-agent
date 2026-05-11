@@ -1,6 +1,6 @@
 ---
 name: claim
-description: Claim a JIRA ticket. Runs inside the Smith teammate context as step 1 of ticket mode. Transitions ticket status to the configured claim-status, adds the smith-implementing label, and confirms the worktree branch (already created by the lead before spawn) is the expected `task/<key>-<slug>`.
+description: Claim a JIRA ticket — transition status, add smith-implementing label, confirm worktree branch. Step 1 of Smith's ticket mode.
 ---
 
 # smith:claim (inner-teammate)
