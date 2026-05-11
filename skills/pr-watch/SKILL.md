@@ -1,38 +1,54 @@
 ---
 name: pr-watch
-description: Fan-out poller for all open Smith-authored draft PRs. Per-PR: ensure worktree exists, fetch unresolved comments, address them via pr-feedback-helper, commit and push. Tracks per-thread fix cycles; tags needs-human-attention after 5 cycles on the same thread.
+description: Legacy skill — superseded by the pr-comments monitor (Section 5.6). Kept only as a manual "rescan all Smith PRs for unresolved comments now" trigger. May be removed in a later phase.
 ---
 
-# Smith PR Watch
+# smith:pr-watch (legacy — see also: pr-comments monitor)
 
-See `docs/spec.md` Section 11.6 for the full contract.
+This skill was the pre-monitor design's PR-fix fan-out mechanism. The
+`pr-comments` monitor in `monitors/monitors.json` now handles that role
+event-driven (spec Section 5.6).
 
-## Inputs
+This file is kept as a thin operator-driven escape hatch: when invoked,
+it does a one-shot rescan of all open Smith-authored PRs for unresolved
+comments and dispatches PR-fix-mode Smith+Anderson pairs (within the
+concurrency cap) for any PR with unresolved comments — equivalent to
+the `pr-comments` monitor firing manually.
 
-- None (discovers state via `gh pr list --label smith-authored`)
-- `$SMITH_DRY_RUN` env
+## When you might use this
 
-## Outputs
+- The monitor's last poll was less than 60 seconds ago and a reviewer
+  just left comments you want addressed *now* — skip the wait.
+- You temporarily stopped the watchdog (via `.smith/STOP`), lifted the
+  stop, and want to drain any PR-comment backlog without waiting for
+  the next natural poll.
+- Debugging: you want to manually trigger the same logic the monitor
+  uses to verify it works.
 
-- One log line per PR processed
-- Side effects (production): per-PR worktree create, commit, push, label ops
-- Side effects (dry-run): log only
+## Workflow
 
-## Phase 1 workflow
+1. Pre-flight (same as the other outer-session skills):
+   ```
+   bash $CLAUDE_PLUGIN_ROOT/scripts/assert_target_repo.sh
+   ```
+2. Run the monitor script in oneshot mode:
+   ```
+   SMITH_MONITOR_ONESHOT=1 \
+     bash $CLAUDE_PLUGIN_ROOT/scripts/monitor_pr_comments.sh
+   ```
+   Capture any emitted notification lines.
+3. For each `smith.pr.new_comments` notification: apply the same
+   reaction rules as `/smith:watchdog` ("On smith.pr.new_comments").
+   Dispatch a PR-fix-mode Smith+Anderson pair per matching PR, subject
+   to the concurrency cap.
 
-Phase 1 only lists candidate PRs and logs them:
+## Phase 1 caveat
 
-1. `gh pr list --label smith-authored --state open --json number,title,headRefName`
-   (in dry-run mode this is allowed because it's a read-only API call;
-   alternately when `$SMITH_DRY_RUN_FIXTURE_PRS` is set, read that fixture.)
-2. For each PR, log:
-   `<ts> | smith-pr-watch | PR-<N> | dry-run-scan | branch=<head>`
+Same Phase-1 placeholder rules apply: PR-fix-mode Smith teammates log
+intended writes (`would-fix`, `would-push`) without performing them.
 
-No comment fetching, no worktree creation, no commits.
+## Future
 
-## Out of scope for Phase 1
-
-- Per-PR worktree creation under `.smith/worktrees/`
-- pr-feedback-helper integration
-- Per-thread fix-cycle counter and `needs-human-attention` labelling
-- Real commit + push
+This skill may be removed once the `pr-comments` monitor is proven
+reliable in real-world use. The plugin doesn't need redundant entry
+points for the same logic.

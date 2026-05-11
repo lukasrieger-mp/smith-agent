@@ -1,41 +1,147 @@
 ---
 name: pr
-description: Open the draft PR for a Smith-implemented ticket. Two paths: success (clean PR title and body) and WIP-stuck (escalation PR with needs-human-attention label, JIRA label swap, promoted spec/plan/brief). Always opens DRAFT — never marks ready-for-review, never merges.
+description: Open the draft PR for a Smith-implemented ticket. Two paths — success (clean title/body, smith-implementing label removed) and WIP-stuck (escalation PR with needs-human-attention label, JIRA label swap to auto-impl-failed, promoted spec/plan/brief artefacts committed). Always opens DRAFT — never marks ready-for-review, never merges.
 ---
 
-# Smith PR
+# smith:pr (inner-teammate)
 
-See `docs/spec.md` Section 11.5 for the full contract.
+You are inside a Mr. Smith teammate session (ticket mode). This skill
+is the last step of the pipeline. It runs after `smith:pipeline`
+returned a result.
 
-## Inputs
+For the full contract see `docs/spec.md` Section 11.2.4.
 
-- `$TICKET`, `$BRANCH`
-- `$OUTCOME` — `success` or `stuck`
-- `$STUCK_REASON` — required when `$OUTCOME=stuck`
-- `$SMITH_DRY_RUN` — when `1`, log intended actions only
+## Inputs (from your spawn prompt + skill chain)
 
-## Outputs
+- `ticket`, `branch`, `worktree`, `dry_run` — from spawn prompt
+- `outcome` — the pipeline's result: `success`, `stuck`, or `error`
+- `stuck_reason` — populated when `outcome != "success"`
 
-- Stdout: would-be PR URL placeholder in Phase 1 (`dry-run://pr/$TICKET`)
-- Side effects (production): `git push`, `gh pr create --draft`, JIRA label
-  ops, optional artifact promotion (stuck path)
-- Side effects (dry-run): log entries only
+## Two paths
 
-## Phase 1 workflow
+### Path A — Success
 
-All actions are dry-run:
+The pipeline ran clean: spec + plan + impl committed, quality checks
+green. Open a normal draft PR.
 
-1. Compose PR title:
-   - `$OUTCOME=success` → `[<TICKET>] <summary>`
-   - `$OUTCOME=stuck` → `[WIP - agent-stuck] [<TICKET>] <summary>`
-2. Compose PR body (full structure per spec Section 10.3; placeholder body
-   acceptable for Phase 1).
-3. Log: `<ts> | smith-pr | $TICKET | dry-run-pr | outcome=$OUTCOME, would-push=$BRANCH, title="<title>"`
-4. Print `dry-run://pr/$TICKET`.
+1. Push the branch:
+   ```
+   git push -u origin "$branch"
+   ```
+2. Compose the PR title:
+   ```
+   title="[<TICKET-KEY>] <ticket-summary-from-jira>"
+   ```
+3. Compose the PR body — a Markdown doc with these sections:
+   - **Links**: JIRA ticket URL (full link).
+   - **What changed** — one bullet per high-level component touched.
+     Derive from `git diff --stat origin/develop...HEAD` grouped by
+     module/path.
+   - **How it was tested** — list of `./gradlew` commands run via
+     `run-silent.sh` during the pipeline, plus the umbrella
+     `quality-check.sh` result.
+   - **Spec & plan** — links to the committed files
+     (`docs/superpowers/specs/<…>-design.md`, `docs/superpowers/plans/<…>.md`).
+   - **Footer**: `Drafted by Smith (autonomous agent).`
+4. Create the draft PR:
+   ```
+   gh pr create --draft \
+     --title "$title" \
+     --body "$body" \
+     --base develop \
+     --head "$branch" \
+     --label smith-authored
+   ```
+   Capture the PR URL from `gh`'s stdout.
+5. Remove the `smith-implementing` JIRA label:
+   ```
+   acli jira workitem edit --key "$ticket" --label-remove smith-implementing
+   ```
+6. Append log:
+   ```
+   <ts> | smith:pr | $ticket | success-pr | url=<url> branch=$branch
+   ```
+7. Return the PR URL to the caller; populate the outcome JSON's
+   `pr_url` field.
 
-## Out of scope for Phase 1
+### Path B — WIP-stuck
 
-- Real `git push`
-- Real `gh pr create --draft`
-- Label add/remove operations
-- WIP-stuck artifact promotion
+The pipeline returned stuck or error after the retry. Smith is handing
+this work back to a human. Open a WIP draft PR with all the context the
+human will need.
+
+1. **Promote artefacts** so the next human sees them in the PR:
+   ```
+   bash $CLAUDE_PLUGIN_ROOT/scripts/promote_smith_artifacts.sh
+   git add docs/superpowers/specs/<ticket>-brief.md \
+           docs/superpowers/specs/<…>-design.md \
+           docs/superpowers/plans/<…>.md
+   git commit -m "wip(smith): handoff artifacts for $ticket"
+   ```
+   (`promote_smith_artifacts.sh` is a Phase 4 deliverable; in Phase 1
+   substitute a manual `cp` of brief/spec/plan into committed paths.)
+2. Push the branch (still no force):
+   ```
+   git push -u origin "$branch"
+   ```
+3. Compose title:
+   ```
+   title="[WIP - agent-stuck] [<TICKET-KEY>] <summary>"
+   ```
+4. Compose body — same sections as the success path PLUS a prominent
+   "Where Smith got stuck" section at the top, containing:
+   - Which gate failed (spec / plan / diff / build)
+   - The `stuck_reason` verbatim
+   - Anderson's last findings (if applicable), formatted as a list
+   - The last log entries from `<target>/.smith/log.txt`
+5. Create the draft PR with both labels:
+   ```
+   gh pr create --draft \
+     --title "$title" \
+     --body "$body" \
+     --base develop \
+     --head "$branch" \
+     --label smith-authored \
+     --label needs-human-attention
+   ```
+6. **Swap the JIRA labels**:
+   ```
+   acli jira workitem edit --key "$ticket" \
+        --label-remove smith-implementing \
+        --label-add auto-impl-failed
+   ```
+   **Do not** post a JIRA comment (per spec Section 6.6 — labels carry
+   the signal; the PR body holds the narrative).
+7. Append log:
+   ```
+   <ts> | smith:pr | $ticket | wip-stuck-pr | url=<url> reason=<one-line>
+   ```
+8. Return the PR URL; populate the outcome JSON.
+
+## Hard rules (always)
+
+- **Always `--draft`.** Never `gh pr ready`. Never `gh pr merge`.
+- **Always `--base develop`.** Never against `main` or release branches.
+- **Never force-push.** Push only adds commits. If push fails because
+  the remote moved (someone else pushed to the branch), abort with
+  `{result: "error"}` — let the lead retry.
+- The bash-guard hook (Section 5.7) is a backstop: any of the above
+  rules violated by your Bash command will get denied.
+
+## Phase 1 placeholder behaviour
+
+Like the other inner-teammate skills, in Phase 1 this is dry-run-
+equivalent. Instead of running `gh pr create` and `acli ... edit`, log
+the intended commands to `<target>/.smith/log.txt` and return a fake
+PR URL: `dry-run://pr/$ticket`. The push step is also skipped — the
+worktree's commits stay local.
+
+Phase 4 of the spec replaces the placeholder with the live actions
+above.
+
+## On error
+
+Any failure (push rejected, gh pr create errors, acli failure) → return
+`{result: "error", reason}`. Lead retries once with a fresh teammate
+pair. If the retry also fails, hand off to WIP-stuck (this very skill,
+Path B, on retry).
