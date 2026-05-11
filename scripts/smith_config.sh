@@ -40,16 +40,26 @@ ensure_gitignored() {
 
 if [[ ! -f "$config" ]]; then
   mkdir -p "$home"
+  # Defaults — fall back to userConfig env vars if the operator set them when
+  # enabling the plugin, otherwise to the hardcoded baseline.
+  # See plugin.json `userConfig` for the documented keys.
+  default_jira_project_key="${CLAUDE_PLUGIN_OPTION_JIRA_PROJECT_KEY:-APP}"
+  default_sp_field="${CLAUDE_PLUGIN_OPTION_JIRA_STORY_POINTS_FIELD:-customfield_10026}"
+  default_sprint_field="${CLAUDE_PLUGIN_OPTION_JIRA_SPRINT_FIELD:-customfield_10020}"
+  default_eligible_status="${CLAUDE_PLUGIN_OPTION_JIRA_ELIGIBLE_STATUS:-Ready for Development}"
+  default_claim_status="${CLAUDE_PLUGIN_OPTION_JIRA_CLAIM_STATUS:-In Progress}"
+  default_polling_minutes="${CLAUDE_PLUGIN_OPTION_POLLING_MINUTES:-30}"
+
   cat > "$config" <<JSON
 {
   "target_repo": "$target_repo",
   "max_concurrent_smiths": 2,
-  "polling_minutes": 30,
-  "jira_project_key": "APP",
-  "story_points_field": "customfield_10026",
-  "sprint_field": "customfield_10020",
-  "eligible_status": "Ready for Development",
-  "claim_status": "In Progress",
+  "polling_minutes": $default_polling_minutes,
+  "jira_project_key": "$default_jira_project_key",
+  "story_points_field": "$default_sp_field",
+  "sprint_field": "$default_sprint_field",
+  "eligible_status": "$default_eligible_status",
+  "claim_status": "$default_claim_status",
   "max_critic_rounds": 3,
   "max_pr_fix_cycles": 5,
   "build_wallclock_minutes": 45

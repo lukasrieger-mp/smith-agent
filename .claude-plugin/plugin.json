@@ -5,5 +5,50 @@
   "author": {
     "name": "Lukas Rieger",
     "email": "lukas.rieger@myposter.de"
+  },
+  "userConfig": {
+    "jira_project_key": {
+      "type": "string",
+      "title": "JIRA project key",
+      "description": "JIRA project Smith scans for candidate tickets, e.g. APP.",
+      "default": "APP",
+      "required": true
+    },
+    "jira_story_points_field": {
+      "type": "string",
+      "title": "JIRA Story Points custom field ID",
+      "description": "Custom field ID for Story Points in your JIRA Cloud instance (e.g. customfield_10026). Find via `acli jira workitem view <ticket> --json | jq '.fields | keys'`.",
+      "default": "customfield_10026",
+      "required": true
+    },
+    "jira_sprint_field": {
+      "type": "string",
+      "title": "JIRA Sprint custom field ID",
+      "description": "Custom field ID for Sprint, e.g. customfield_10020.",
+      "default": "customfield_10020",
+      "required": true
+    },
+    "jira_eligible_status": {
+      "type": "string",
+      "title": "JIRA status — eligible for pickup",
+      "description": "Status name Smith looks for when scanning. Tickets must be in this status to be claimed.",
+      "default": "Ready for Development",
+      "required": true
+    },
+    "jira_claim_status": {
+      "type": "string",
+      "title": "JIRA status — in-progress",
+      "description": "Status Smith transitions tickets TO when claiming them.",
+      "default": "In Progress",
+      "required": true
+    },
+    "polling_minutes": {
+      "type": "number",
+      "title": "JIRA poll interval (minutes)",
+      "description": "How often the jira-candidates monitor scans JIRA for new eligible tickets.",
+      "default": 30,
+      "min": 1,
+      "max": 1440
+    }
   }
 }

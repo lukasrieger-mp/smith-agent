@@ -367,6 +367,82 @@ a specific ticket without waiting for a notification. And `/smith:watchdog`
 can be re-invoked to "scan now" (force the monitors to emit any pending
 state on the next poll) — the skill body documents this.
 
+### 5.7 Hooks (security backstop)
+
+Smith ships one [plugin hook][hooks-doc] today: a `PreToolUse` matcher on
+the `Bash` tool that scans every command for patterns from the
+destructive-operation denylist (Section 13.6). Implemented in
+`scripts/hook_bash_guard.sh`, registered via `hooks/hooks.json`.
+
+[hooks-doc]: https://code.claude.com/docs/en/plugins-reference#hooks
+
+The hook reads the standard hook JSON on stdin, inspects
+`tool_input.command`, and either:
+
+- **Allows silently** — exits 0 with no output. The vast majority of Bash
+  calls take this path.
+- **Denies with reason** — emits a `permissionDecision: "deny"` JSON
+  block (per [the PreToolUse hook output schema][prehook-doc]) and exits
+  0. Claude Code blocks the tool call and surfaces the
+  `permissionDecisionReason` back to the agent's context.
+
+[prehook-doc]: https://code.claude.com/docs/en/hooks
+
+Patterns it blocks (substring/regex match on the literal command):
+
+- `rm -rf`, `rm -fr`, `rm --recursive` (any recursive removal)
+- `git push --force`, `git push --force-with-lease`
+- `git branch -D` (force-delete)
+- `git reset --hard`
+- `gh pr merge`, `gh pr close`, `gh pr review --approve`
+- `gh repo delete|edit|fork`, `gh release …`
+- `acli jira workitem delete|move-to-trash`
+- `sudo`
+- `launchctl`, `defaults write`, `networksetup`
+
+False-positives are accepted as the safe failure mode — better an
+occasional false block than a missed real one. The hook is defense in
+depth on top of Smith's own discipline (Section 13.6 documents the
+denylist as a rule Smith never violates); the hook catches drift.
+
+#### 5.7.1 Future hooks (not implemented in Phase 1)
+
+| Hook event | Use case | Phase |
+|---|---|---|
+| `TaskCompleted` | Block teammate from marking task complete if `quality-check.sh` fails | 3 (live pipeline) |
+| `TeammateIdle` | If Smith goes idle without sending outcome JSON, prompt for one | 3 |
+| `PostToolUse Edit\|Write` | Could trigger auto-lint, but already covered by `quality-check.sh` umbrella; probably skip |
+
+### 5.8 User configuration (plugin-level)
+
+Adopters of Smith have different JIRA instances, projects, and workflows.
+Smith exposes six [user-configurable values][userconfig-doc] in
+`plugin.json` that Claude Code prompts the operator to fill in (or accept
+the defaults) when the plugin is enabled:
+
+[userconfig-doc]: https://code.claude.com/docs/en/plugins-reference#user-configuration
+
+| Key | Type | Default | Purpose |
+|---|---|---|---|
+| `jira_project_key` | string | `APP` | JIRA project Smith scans |
+| `jira_story_points_field` | string | `customfield_10026` | Custom field ID for Story Points |
+| `jira_sprint_field` | string | `customfield_10020` | Custom field ID for Sprint |
+| `jira_eligible_status` | string | `Ready for Development` | Status that makes a ticket eligible for pickup |
+| `jira_claim_status` | string | `In Progress` | Status Smith transitions to on claim |
+| `polling_minutes` | number | 30 | JIRA monitor poll interval (minutes) |
+
+These values are exported to plugin subprocesses as
+`CLAUDE_PLUGIN_OPTION_<KEY>` environment variables. The first time
+`scripts/smith_config.sh` runs against a target, it uses these env vars to
+seed the per-target `.smith/config.json`. Once that file exists, it's
+authoritative — to change a value later, the operator edits `.smith/config.json`
+in the target or deletes it to re-seed from current userConfig.
+
+Smith-internal limits (`max_concurrent_smiths`, `max_critic_rounds`,
+`max_pr_fix_cycles`, `build_wallclock_minutes`) are intentionally not
+exposed via `userConfig` — they're load-bearing safety ceilings, not
+per-team preferences.
+
 ## 6. JIRA integration
 
 ### 6.1 Candidate query (JQL)
@@ -1303,6 +1379,8 @@ modifications beyond the runtime state directory.
     pipeline/SKILL.md            → /smith:pipeline  (inner-teammate)
     pr/SKILL.md                  → /smith:pr        (inner-teammate)
     pr-watch/SKILL.md            → /smith:pr-watch  (legacy; see 11.1.3)
+  hooks/
+    hooks.json                   PreToolUse Bash guard (Section 5.7)
   monitors/
     monitors.json                Background monitors (Section 5.6)
   scripts/                       Shared bash helpers (Section 11.3)
@@ -1315,6 +1393,7 @@ modifications beyond the runtime state directory.
     monitor_jira.sh              ← run by jira-candidates monitor
     monitor_pr_comments.sh       ← run by pr-comments monitor
     monitor_stop.sh              ← run by stop-sentinel monitor
+    hook_bash_guard.sh           ← run by PreToolUse Bash hook
     promote_smith_artifacts.sh
   test/
     lib/assert.sh

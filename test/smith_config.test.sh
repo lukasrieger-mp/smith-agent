@@ -57,4 +57,22 @@ SMITH_HOME="$TMP/.smith" bash "$SCRIPT" target_repo >/dev/null
 count=$(grep -cF '.smith/' "$TMP/.gitignore")
 assert_eq "1" "$count" "preserves-existing-entry"
 
+# userConfig env vars seed the defaults at first-create time
+rm -rf "$TMP/.smith" "$TMP/.gitignore"
+got=$( CLAUDE_PLUGIN_OPTION_JIRA_PROJECT_KEY=BACK \
+       CLAUDE_PLUGIN_OPTION_JIRA_ELIGIBLE_STATUS=Ready \
+       CLAUDE_PLUGIN_OPTION_POLLING_MINUTES=15 \
+       SMITH_HOME="$TMP/.smith" bash "$SCRIPT" jira_project_key )
+assert_eq "BACK" "$got" "userconfig-project-key"
+got=$(SMITH_HOME="$TMP/.smith" bash "$SCRIPT" eligible_status)
+assert_eq "Ready" "$got" "userconfig-status"
+got=$(SMITH_HOME="$TMP/.smith" bash "$SCRIPT" polling_minutes)
+assert_eq "15" "$got" "userconfig-polling"
+
+# Once .smith/config.json exists, changing the env var does NOT change values
+# (per-target file is authoritative; user reconfigures by editing or deleting)
+got=$( CLAUDE_PLUGIN_OPTION_JIRA_PROJECT_KEY=OTHER \
+       SMITH_HOME="$TMP/.smith" bash "$SCRIPT" jira_project_key )
+assert_eq "BACK" "$got" "userconfig-not-applied-after-create"
+
 echo "PASS smith_config.test.sh"

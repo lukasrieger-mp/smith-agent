@@ -35,6 +35,11 @@ cd /path/to/your/target-repo
 claude --plugin-dir ~/StudioProjects/smith-agent
 ```
 
+On first enable, Claude Code prompts you for a few JIRA-specific values
+(project key, custom field IDs for Story Points and Sprint, eligible/claim
+status names, poll interval). Defaults work for the operator's setup; other
+adopters override at the prompt.
+
 Inside the session, just use the commands. Per-target setup
 (`.smith/config.json` + a `.gitignore` entry for `.smith/`) is created
 **lazily** on the first invocation that needs it — no explicit bootstrap
