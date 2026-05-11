@@ -34,13 +34,14 @@ jql="assignee = currentUser() \
   ORDER BY priority DESC, created ASC"
 
 acli jira workitem search --jql "$jql" \
-  --fields "summary,components,priority,$sp_field,$sprint_field" \
+  --fields "summary,components,labels,priority,$sp_field,$sprint_field" \
   --json \
   | jq --arg sp "$sp_field" --arg sprint "$sprint_field" '
       [ .[] | {
           key: .key,
           summary: .fields.summary,
           components: (.fields.components // [] | map(.name)),
+          labels: (.fields.labels // []),
           priority: (.fields.priority.name // "None"),
           story_points: (.fields[$sp] // null),
           sprint: (.fields[$sprint][0].name // null)

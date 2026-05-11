@@ -528,20 +528,31 @@ status transitions are limited to the one in 6.4.
 
 ### 6.7 Platform classification
 
-Two-step decision in `smith:watchdog`:
+Two-step decision in `smith:watchdog` and `/smith:implement` pre-flight:
 
-1. Read the ticket's `components` field. If components are:
-   - `{iOS}` exactly → reject, never touch
-   - Any subset containing `Android`, `KMP`, `Shared` → accept
-   - Empty or ambiguous (e.g. unknown values) → fall through to step 2
+1. **Read both the ticket's `components` field AND its `labels` field**,
+   union them into one set of platform-marker strings. Some teams put
+   platform info in components, some in labels, some in both. The
+   classifier doesn't care — it gets the union.
+   Pipe the merged array to `scripts/classify_platform.sh`. Decision:
+   - Result `kmp` (any of `Shared/KMP`, `KMP`, `Shared`, `Multiplatform`
+     present) → **accept** as KMP work
+   - Result `android` → **accept** as Android work
+   - Result `ios` (only iOS markers present) → **reject**, never touch
+   - Result `unclear` (no recognized markers) → fall through to step 2
 2. Spawn a lightweight classifier subagent on the ticket's `summary` +
    `description`, asking for `{ios|android|kmp|unclear}`. Reject only
-   on `ios`; treat `unclear` as eligible (Anderson will catch scope drift
-   later if it turns out to be iOS).
+   on `ios`; treat `unclear` as eligible (Anderson will catch scope
+   drift later if it turns out to be iOS).
 
 A second iOS check fires after enrichment: if the `Explore` subagent's
 suspected-affected-files set is > 50 % `ios-app/`, abort the pipeline to the
 WIP-stuck path before any code is written.
+
+**Why `Multiplatform` → `kmp`**: tickets tagged Multiplatform typically
+span iOS + Android + shared code. Smith starts in the shared/KMP layer
+(work most likely to land cleanly) and the post-enrichment safety net
+catches mis-tagged iOS-heavy tickets.
 
 ## 7. Git integration
 

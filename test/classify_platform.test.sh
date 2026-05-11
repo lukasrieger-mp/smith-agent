@@ -35,6 +35,22 @@ assert_eq "unclear" "$got" "empty"
 got=$(echo '["Backend"]' | bash "$SCRIPT")
 assert_eq "unclear" "$got" "unknown"
 
+# "Multiplatform" marker alone -> "kmp"
+got=$(echo '["Multiplatform"]' | bash "$SCRIPT")
+assert_eq "kmp" "$got" "multiplatform-alone"
+
+# Multiplatform + Android -> still kmp (kmp wins precedence)
+got=$(echo '["Multiplatform","Android"]' | bash "$SCRIPT")
+assert_eq "kmp" "$got" "multiplatform-and-android"
+
+# Multiplatform + iOS -> kmp (kmp wins; not iOS-only)
+got=$(echo '["iOS","Multiplatform"]' | bash "$SCRIPT")
+assert_eq "kmp" "$got" "multiplatform-and-ios"
+
+# Caller-merged input (components ∪ labels) tolerates duplicates
+got=$(echo '["Android","iOS","Android"]' | bash "$SCRIPT")
+assert_eq "android" "$got" "duplicates-tolerated"
+
 # Malformed JSON -> non-zero exit
 if echo 'not json' | bash "$SCRIPT" 2>/dev/null; then
   echo "FAIL: should error on bad JSON" >&2; exit 1

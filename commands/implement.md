@@ -40,17 +40,22 @@ Examples:
 3. Verify the ticket via `acli` (skip the full JQL — just confirm the
    ticket exists, is assigned to you, and is in the eligible status):
    ```
-   acli jira workitem view "$1" --fields "summary,status,assignee,components" --json
+   ticket_json=$(acli jira workitem view "$1" --fields "summary,status,assignee,components,labels" --json)
    ```
    If status is not the configured eligible status (default `Ready for
    Development`) or assignee is not currentUser, abort with the reason.
-4. Classify platform:
+4. Classify platform. We merge **components AND labels** because some
+   teams put the platform marker in labels rather than components:
    ```
-   components=$(... extract components from the acli output ...)
-   echo "$components" | bash $CLAUDE_PLUGIN_ROOT/scripts/classify_platform.sh
+   markers=$(echo "$ticket_json" | jq -c '
+     (.fields.components // [] | map(.name)) + (.fields.labels // [])
+   ')
+   platform=$(echo "$markers" | bash $CLAUDE_PLUGIN_ROOT/scripts/classify_platform.sh)
    ```
-   If the result is `ios`, abort with: "iOS-only ticket; Smith does not
-   handle iOS work."
+   `classify_platform.sh` recognises: `Shared/KMP`, `KMP`, `Shared`,
+   `Multiplatform` → `kmp`; `Android` → `android`; pure `iOS` → `ios`;
+   anything else → `unclear`. If the result is `ios`, abort with:
+   "iOS-only ticket; Smith does not handle iOS work."
 
 ## Worktree setup (always live, even in --dry-run)
 
