@@ -137,11 +137,11 @@ high_count=$(echo "$reply_json" \
              | bash $SMITH_PLUGIN_ROOT/scripts/validate_anderson_reply.sh --count-high)
 ```
 
-## Phase 3 — live Anderson critic loop
+## Anderson dialogue
 
-As of Phase 3, the Anderson teammate runs the live critic prompt
-(see `agents/anderson.md`). The pipeline drives real round-trips
-with structured JSON in both directions:
+The Anderson teammate runs the live critic prompt (see
+`agents/anderson.md`). The pipeline drives real round-trips with
+structured JSON in both directions:
 
 - Smith mails `review.request` → Anderson reads artefact → mails
   `anderson.review.findings`
@@ -151,16 +151,10 @@ with structured JSON in both directions:
   `anderson.finding.drop` or `anderson.finding.hold`. Rebuts stay
   within the same critic round (don't count as a new round).
 
-Anderson runs in placeholder mode **only** when `dry_run=true`. In
-that case, Smith should still send the mailbox request (to exercise
-the team plumbing) but Anderson's reply will be vacuous and the gate
-passes trivially.
-
-## Still placeholder (Phase 4+)
-
-`smith:pr` is still a placeholder skill at the end of the pipeline.
-Smith committing per-gate work to the worktree is real; pushing those
-commits and opening a PR is not. Phase 4 closes that loop.
+Anderson runs in vacuous mode **only** when `dry_run=true`. In that
+case, Smith should still send the mailbox request (to exercise the
+team plumbing) but Anderson's reply will be empty and the gate passes
+trivially.
 
 ## Log entries
 

@@ -140,22 +140,19 @@ exceed 2 active Smiths even with watchdog dispatching alongside.
 - JIRA label `no-auto-impl` on a specific ticket — `jira_scan.sh`
   excludes it from future scans
 
-## Phase 6 status
+## How the autonomous loop runs
 
-As of Phase 6, the watchdog is **fully autonomous**:
+When armed, the watchdog runs fully autonomously:
 
-- Both Smith dispatch modes (ticket + pr-fix) live since Phases 4–5
+- Both Smith dispatch modes (ticket + pr-fix) are active
 - Cap enforcement via `active_smiths.sh` (read at every notification)
-- All notification-reaction rules in `skills/watchdog/SKILL.md` are
-  executable runbooks (not just doctrine), backed by helper scripts:
-  `pick_top_candidate.sh`, `make_worktree.sh`,
-  `checkout_pr_worktree.sh`, `gh_pr_unresolved_comments.sh`,
-  `pr_fix_cycle_inc.sh`.
+- Notification-reaction rules in `skills/watchdog/SKILL.md` are
+  executable runbooks backed by helper scripts: `pick_top_candidate.sh`,
+  `make_worktree.sh`, `checkout_pr_worktree.sh`,
+  `gh_pr_unresolved_comments.sh`, `pr_fix_cycle_inc.sh`.
 
-What's *not* enforced mechanically (depends on LLM-driven discipline):
-
-- Smith teammates calling `active_smiths.sh remove` after they finish
-  (their outcome contract requires it). Without that, the cap can
-  drift up over the session lifetime. Future iteration: a
-  `TeammateIdle` hook to force the cleanup (deferred per spec
-  Section 5.7.1).
+One piece is not enforced mechanically: Smith teammates must call
+`active_smiths.sh remove` after they finish (their outcome contract
+requires it). Without that, the cap can drift up over the session
+lifetime. A future `TeammateIdle` hook could force this cleanup; for
+now, an operator can spot-check with `active_smiths.sh list`.

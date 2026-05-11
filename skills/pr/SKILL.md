@@ -151,9 +151,9 @@ human will need.
 
 ## Workflow gated on dry_run
 
-The two paths described above (Success and WIP-stuck) are the **live**
-Phase 4 behaviour, executed when `dry_run = false` in your spawn
-prompt. When `dry_run = true`, skip every external side effect:
+The two paths described above (Success and WIP-stuck) execute when
+`dry_run = false` in your spawn prompt. When `dry_run = true`, skip
+every external side effect:
 
 - Don't `git push`
 - Don't `gh pr create`

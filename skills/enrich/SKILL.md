@@ -34,8 +34,7 @@ state; per-ticket scratch lives in the per-ticket worktree.
 
 ## Original ticket
 
-<verbatim ADF body rendered as Markdown — lossy fidelity is OK in Phase 1;
- Phase 2 uses a proper ADF walker>
+<verbatim ADF body rendered as Markdown via scripts/adf_to_markdown.sh>
 
 ## Smith's reading
 
@@ -63,7 +62,7 @@ In **both** dry-run and live modes, this skill writes a brief file at
 operation (no state changes), so we perform it unconditionally — only
 the optional Explore subagent dispatch is gated on `dry_run`.
 
-### Single-path workflow (Phase 2)
+### Steps
 
 1. Pre-flight:
    ```
@@ -76,19 +75,19 @@ the optional Explore subagent dispatch is gated on `dry_run`.
    ```
    The script fetches the ticket via `acli`, flattens the ADF
    `description` to Markdown via `scripts/adf_to_markdown.sh`, and
-   writes the structured brief. "Smith's reading" is filled with
-   Phase 2.x placeholders for now (see below).
+   writes the structured brief.
 3. Append log:
    ```
    <ts> | smith:enrich | $ticket | brief-written | path=$brief_path
    ```
 4. Echo the brief path to stdout.
 
-### Phase 2.x — Explore subagent integration (deferred)
+### Future: Explore subagent integration
 
-The "Smith's reading" section currently contains placeholder bullets.
-In Phase 2.x, after `write_brief.sh` returns, dispatch the Explore
-subagent via the Task tool with a focused prompt:
+The "Smith's reading" section's "Suspected affected files" bullet is
+currently filled by `write_brief.sh` with a static placeholder. A
+follow-up could dispatch the Explore subagent via the Task tool after
+`write_brief.sh` returns:
 
 > Read the JIRA ticket below. Identify files in the target repo likely
 > to be affected by this work. Return a JSON array of
@@ -100,13 +99,12 @@ subagent via the Task tool with a focused prompt:
 > Summary: $summary
 > Description (Markdown-rendered): <contents of the brief's "Original ticket" section>
 
-Parse Explore's reply and rewrite the "Smith's reading" → "Suspected
-affected files" section of the brief in-place.
+Parse Explore's reply and rewrite the "Suspected affected files"
+section of the brief in-place.
 
-In `dry_run = true` mode, skip the Explore dispatch entirely (Explore
-reads files but produces no side effects, so this gate is purely for
-token budget hygiene — dry-run runs should be cheap exercise of the
-orchestration).
+In `dry_run = true` mode, this Explore dispatch should be skipped —
+Explore is read-only so it has no side effects, but the call is
+non-trivial in token cost and dry-run is meant to be cheap.
 
 ## On error
 

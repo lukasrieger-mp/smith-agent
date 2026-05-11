@@ -174,19 +174,10 @@ Smith implement complete (dry-run=<true|false>)
 
 Then `tail -5 .smith/log.txt` so the operator sees the recent log lines.
 
-## Phase status (today: Phase 4)
+## End-to-end behaviour
 
-What's live, by skill (all gated on `dry_run=false` from the spawn prompt):
-
-| Skill | Phase 4 status |
-|---|---|
-| `smith:claim` | **LIVE** — JIRA transition + label add |
-| `smith:enrich` | **LIVE** brief writing; Explore subagent dispatch deferred to Phase 2.x |
-| `smith:pipeline` | **LIVE** Anderson critic loop; real spec/plan/diff gates |
-| `smith:pr` | **LIVE** PR open — success path (clean draft PR + JIRA label remove) and WIP-stuck path (artefact promotion + draft PR with needs-human-attention + JIRA label swap) |
-
-**Consequence for operators today** — running `/smith:implement APP-XXXX`
-without `--dry-run` walks the full pipeline end-to-end:
+Running `/smith:implement APP-XXXX` without `--dry-run` walks the full
+pipeline:
 
 1. JIRA: eligible status → claim status, add `smith-implementing`
 2. Worktree created on `task/<key>-<slug>`

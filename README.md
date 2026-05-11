@@ -97,7 +97,7 @@ echo "All tests pass."
 ```
 .claude-plugin/plugin.json   Plugin manifest (name, version, description)
 agents/anderson.md           Adversarial critic (teammate)
-agents/smith.md              Implementer (teammate)  ← added in Phase 1.5
+agents/smith.md              Implementer (teammate)
 commands/                    Slash commands  → /smith:implement, /smith:watchdog
 skills/                      → /smith:watchdog, /smith:claim, /smith:enrich,
                                 /smith:pipeline, /smith:pr, /smith:pr-watch
@@ -106,7 +106,7 @@ scripts/                     Shared bash helpers (jira_scan, classify, ...)
                              + monitor scripts (monitor_jira.sh, etc.)
 test/                        Script tests + JSON fixtures
 docs/spec.md                 Design spec
-docs/plans/                  One plan per phase
+docs/plans/                  Historical build plans (one per phase)
 ```
 
 ## Kill switches (in the target repo)
@@ -115,17 +115,14 @@ docs/plans/                  One plan per phase
 - Add JIRA label `no-auto-impl` to a ticket — watchdog skips it
 - Ctrl-C the Claude Code session running the watchdog
 
-## Status
-
-**Phase 6 of 7 done. Smith is functionally end-to-end autonomous.**
-
-The full flow:
+## How it runs
 
 1. Operator runs `claude --plugin-dir ~/StudioProjects/smith-agent`
    from inside a target repo
-2. Operator invokes `/smith:watchdog` once — monitors start
-3. From this point: when a new eligible JIRA candidate appears (or
-   reviewer comments arrive on a Smith-authored PR), the watchdog
+2. Operator invokes `/smith:watchdog` once (or `/smith:watchdog --pr-only`
+   for PR-fix-only mode) — monitors begin polling
+3. From this point: when a new eligible JIRA candidate appears, or
+   reviewer comments arrive on a Smith-authored PR, the watchdog
    dispatches a Smith+Anderson teammate pair within the 2-cap
 4. Smith implements the ticket (or addresses comments) with Anderson
    critiquing at each gate, ending with a draft PR
@@ -137,20 +134,16 @@ Both dispatch modes are live:
 - **PR-fix mode** — checkout PR worktree → fetch unresolved threads →
   fix each (cap 5/thread) → Anderson diff review → push
 
-Autonomous dispatch (Phase 6): the watchdog session reacts to monitor
-notifications by:
+The watchdog session reacts to monitor notifications by:
 - Counting active pairs via `active_smiths.sh count`
 - Picking top eligible JIRA key via `pick_top_candidate.sh`
 - Spawning the teammate pair via the agent-teams API
 - Registering the pair in `active_smiths.sh` so the cap holds
 
-Operator interventions still possible: `/smith:implement APP-XXXX`
-manual override; `touch .smith/STOP` kill switch (~2 sec response).
+Operator overrides: `/smith:implement APP-XXXX` for a manual dispatch;
+`touch .smith/STOP` for a soft kill switch (~2 sec response).
 
-Deferred:
-- **Phase 2.x** — Explore subagent integration in `smith:enrich` (the
-  brief's "Smith's reading" section is currently a placeholder)
-- Integration testing against real tickets — the only way to validate
-  the LLM-driven critic dialogue and orchestration
-
-See [`docs/spec.md`](docs/spec.md) Section 16 for the full decomposition.
+Known gap: the brief's "Suspected affected files" section is a static
+placeholder. A follow-up could populate it via an Explore subagent
+dispatch — useful for larger tickets where Smith would benefit from
+a precomputed pointer set.

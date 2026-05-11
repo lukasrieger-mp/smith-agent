@@ -64,7 +64,7 @@ spawning. Respect their override.
 
 The dry-run flag from your spawn prompt picks the branch:
 
-### When `dry_run = true` (placeholder behaviour)
+### When `dry_run = true`
 
 1. Pre-flight (above).
 2. Race-condition re-query (above).
@@ -78,10 +78,10 @@ The dry-run flag from your spawn prompt picks the branch:
    with `{result: "stuck", reason: "worktree branch mismatch"}`.
 5. Echo `$branch` to stdout.
 
-### When `dry_run = false` (Phase 2: live JIRA writes)
+### When `dry_run = false`
 
-The pre-flight is identical (above). Replace the placeholder logging
-with actual writes via the Phase 2 helper scripts:
+The pre-flight is identical (above). Replace the dry-run logging with
+actual writes via the helper scripts:
 
 ```bash
 # Resolve config

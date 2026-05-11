@@ -3,13 +3,13 @@ name: watchdog
 description: Outer-session notification handler. Reacts to monitor events (jira/pr/stop) by dispatching Smith+Anderson pairs within the 2-cap. Invoke as /smith:watchdog to arm.
 ---
 
-# Smith Watchdog (outer-session, live in Phase 6)
+# Smith Watchdog (outer-session)
 
 This skill is loaded in the **watchdog lead session** — the long-lived
 Claude Code session the operator launches via
 `claude --plugin-dir ~/StudioProjects/smith-agent`. It's the
-counterpart to the `/smith:watchdog` slash command (which is what
-actually arms the monitors via the agent-teams `on-skill-invoke` gating).
+counterpart to the `/smith:watchdog` slash command (which arms the
+monitors by writing `.smith/state/watchdog-mode`).
 
 For the full architectural picture, see `docs/spec.md` Sections 5 + 18.
 
@@ -49,7 +49,7 @@ session to focus on reviewer iteration on existing PRs without
 picking up new tickets. The JIRA monitor still runs and emits
 notifications; the lead simply ignores them.
 
-## Notification reactions (Phase 6 live)
+## Notification reactions
 
 ### On `{"type": "smith.jira.new_candidates", "keys": [...]}`
 
@@ -172,7 +172,7 @@ Examples:
 2026-05-11T15:30:00Z | watchdog | smith.outcome | smith-APP-5601 result=success pr=https://github.com/...
 ```
 
-## Phase 6 caveats
+## Operational caveats
 
 The dispatch flow above relies on the agent-teams spawn API, which is
 LLM-driven (Claude composes the spawn prompt and the team API

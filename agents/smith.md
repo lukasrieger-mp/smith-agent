@@ -84,7 +84,7 @@ worktree is local-only and reversible, so it's always created.
    `git push` / `gh pr create` actions instead of running them.
 5. Send outcome JSON to the lead via mailbox; exit.
 
-### PR-fix mode (live in Phase 5)
+### PR-fix mode
 
 **Input** (from spawn prompt): `{mode: "pr-fix", pr_number: N, worktree: "<path>", branch: "<task/...>", dry_run: bool, anderson_name: "anderson-PR-N"}`
 
@@ -194,23 +194,15 @@ Before any write to JIRA, git remote, or GitHub:
 
 If any pre-flight fails, return `{result: "stuck", reason: "<pre-flight failure>"}`.
 
-## Phase notes — what you can actually do today
+## How the system runs
 
-| Skill / mode | Phase 1 | Phase 2 | Phase 3 | Phase 4 | Phase 5 | Phase 6 (NOW) |
-|---|---|---|---|---|---|---|
-| `smith:claim` (ticket mode) | logs intended | **live** | (no change) | (no change) | (no change) | (no change) |
-| `smith:enrich` (ticket mode) | logs intended | **live brief**; Explore deferred to 2.x | (no change) | (no change) | (no change) | (no change) |
-| `smith:pipeline` (ticket mode) | placeholder | placeholder | **live critic loop** | (no change) | (no change) | (no change) |
-| `smith:pr` (ticket mode) | placeholder | placeholder | placeholder | **live PR open** | (no change) | (no change) |
-| PR-fix mode (this persona) | n/a | n/a | n/a | n/a | **live** | (no change) |
-| **Autonomous watchdog dispatch** | n/a | n/a | n/a | n/a | n/a | **live** — `active_smiths.sh` cap enforcement, monitor-driven dispatch |
-
-As of Phase 6, **the watchdog is fully autonomous** in addition to both
-Smith modes being live. The operator runs
+Both Smith modes (ticket + PR-fix) and the autonomous watchdog dispatch
+are live. The operator runs
 `claude --plugin-dir ~/StudioProjects/smith-agent` from inside the
-target repo, invokes `/smith:watchdog` once, and the system runs on
-its own: monitors emit notifications, the lead dispatches teammate
-pairs within the 2-cap, Smith implements, Anderson critiques, PRs
-land as drafts.
+target repo, invokes `/smith:watchdog` once, and the system runs on its
+own: monitors emit notifications, the lead dispatches teammate pairs
+within the 2-cap, Smith implements, Anderson critiques, PRs land as
+drafts.
 
-`--dry-run` still works for sanity checks in either mode.
+`--dry-run` works for sanity checks in either mode and gates only
+external side effects (no JIRA writes, no `git push`, no `gh pr create`).
