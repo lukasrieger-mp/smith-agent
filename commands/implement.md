@@ -116,7 +116,15 @@ git branch -D task/<ticket-lowercased>-<slug>   # local-only; never pushed in dr
 Use the agent-team spawn mechanism. The spawn-prompt structure is
 shown below in full — don't go fetch the spec for this; everything
 needed is right here. Spawn two teammates with deterministic names so
-the operator can reference them later:
+the operator can reference them later.
+
+**Both must be spawned.** Smith requires a paired Anderson to do
+adversarial review at every gate; without Anderson, Smith aborts the
+ticket with `{result: "error", reason: "anderson not reachable"}`.
+Spawning only Smith is not a valid dispatch — it just burns a Smith
+slot to no effect. The two names must match exactly between Smith's
+spawn prompt ("Your Anderson is: ...") and Anderson's actual spawn
+name; a mismatched name is the same as a missing Anderson.
 
 **Teammate 1 — Mr. Smith**, agent type `smith`, name `smith-<ticket>`:
 
@@ -137,6 +145,14 @@ the operator can reference them later:
 > Wait for review requests from smith-<ticket> via mailbox.
 > Per spec Section 8.2, only report findings at confidence >= 80.
 > Reply with the documented JSON schema for each gate (mode=spec, mode=plan, mode=diff).
+
+**Verify both came up** before considering dispatch successful. After
+the two spawn calls, list active teammates and confirm you see both
+`smith-<ticket>` and `anderson-<ticket>`. If either is missing, retry
+that one spawn. If after retry one is still missing, do not let Smith
+proceed — tear down the half-spawned dispatch via `/smith:abort
+<ticket>` and report `{result: "error", reason: "teammate pair spawn
+incomplete"}` to the operator.
 
 Add a team task: `implement <ticket>`, assigned to Smith.
 

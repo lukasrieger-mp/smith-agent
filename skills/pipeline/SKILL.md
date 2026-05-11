@@ -27,7 +27,16 @@ suffices to operate.)
 ## Three gates, mailbox-driven
 
 Each gate is one mailbox round-trip with Anderson per critic round, up
-to 3 rounds. The gates run in order:
+to 3 rounds. The gates run in order.
+
+**Anderson must respond. You must not review your own work.** If your
+paired Anderson teammate (named in your spawn prompt as
+`anderson_name`) doesn't reply within 120s, or the mailbox tool isn't
+available to you, return `{result: "error", reason: "anderson not
+reachable"}` and stop. The lead retries the whole pipeline with a
+fresh pair. Doing your own diff review in place of Anderson defeats
+the entire point of the adversarial-pair design — don't rationalize
+it as a fallback, no matter how reasonable it feels.
 
 ### Gate 1: SPEC
 

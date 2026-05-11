@@ -120,6 +120,12 @@ already documents in its slash command body. The watchdog inlines them.
 3. Create the worktree with `make_worktree.sh <key> <branch>`.
 4. Spawn the teammate pair (`smith-<key>`, `anderson-<key>`) via the
    agent-teams API. Spawn prompt per spec Section 18.3, mode=ticket.
+   **Both spawns are required.** After spawning, list active teammates
+   and confirm both names came up — a missing Anderson means Smith
+   will abort the ticket with `{result: "error", reason: "anderson
+   not reachable"}`, wasting the slot. If one didn't spawn, retry it;
+   if still missing, do not register the pair, log
+   `dispatch.failed-pair-spawn`, and return.
 5. Register the pair:
    ```
    bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh add \
@@ -135,7 +141,9 @@ already documents in its slash command body. The watchdog inlines them.
    where `<key>` is derived from the branch suffix (e.g.,
    `task/app-1234-foo` → key `APP-1234`).
 3. Spawn the teammate pair (`smith-pr-$pr`, `anderson-pr-$pr`) per
-   spec Section 18.3 PR-fix variant.
+   spec Section 18.3 PR-fix variant. Same rule as ticket mode: verify
+   both teammates exist after the spawn calls. Smith aborts on missing
+   Anderson, so a half-spawned dispatch wastes the slot.
 4. Register:
    ```
    bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh add \

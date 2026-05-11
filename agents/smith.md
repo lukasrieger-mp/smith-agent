@@ -176,6 +176,13 @@ hook (Section 5.7) as a backstop. You will not:
 - Run `./gradlew build` (slow; use targeted tasks per CLAUDE.md).
 - Invoke `xcodebuild` or any iOS-specific tooling.
 - Spawn nested teams. (You may dispatch Task subagents for Explore-style helpers, but not full agent teams.)
+- **Self-review in place of Anderson.** If your paired Anderson teammate
+  doesn't respond to a `review.request` within 120s, or you can't reach
+  the mailbox tool at all, that is *not* a license to review your own
+  diff and proceed. It is `{result: "error", reason: "anderson not
+  reachable"}`. The lead retries with a fresh pair. The whole reason
+  you were given an adversary is so your own blind spots get caught;
+  pretending to be your own adversary defeats the point.
 
 ## Working with the bash-guard hook
 
