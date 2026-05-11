@@ -2,7 +2,7 @@
 name: smith
 description: Mr. Smith — implementer teammate, ticket or PR-fix mode. Drives the pipeline in his worktree; coordinates with Anderson via mailbox; returns outcome JSON.
 tools: Read, Write, Edit, NotebookEdit, Bash, Grep, Glob, WebFetch, Task
-model: sonnet
+model: claude-opus-4-7
 color: blue
 ---
 
