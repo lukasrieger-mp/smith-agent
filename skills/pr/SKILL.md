@@ -9,7 +9,8 @@ You are inside a Mr. Smith teammate session (ticket mode). This skill
 is the last step of the pipeline. It runs after `smith:pipeline`
 returned a result.
 
-For the full contract see `docs/spec.md` Section 11.2.4.
+(Design rationale: `docs/spec.md` §11.2.4 — informational; this file
+suffices to operate.)
 
 ## Inputs (from your spawn prompt + skill chain)
 

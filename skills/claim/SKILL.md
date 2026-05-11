@@ -9,7 +9,8 @@ You are inside a Mr. Smith teammate session (ticket mode). This is the
 first skill you invoke after spawn. Don't run it manually — the spawn
 prompt told you to.
 
-For the full contract see `docs/spec.md` Section 11.2.1.
+(Design rationale lives in `docs/spec.md` §11.2.1 — informational only;
+this file is sufficient to operate.)
 
 ## Inputs (from your spawn prompt)
 

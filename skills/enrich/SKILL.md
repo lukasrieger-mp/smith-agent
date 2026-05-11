@@ -9,7 +9,8 @@ You are inside a Mr. Smith teammate session (ticket mode). This skill
 runs after `smith:claim`. It produces an enriched brief that
 `smith:pipeline` consumes as the seed for the spec-writing gate.
 
-For the full contract see `docs/spec.md` Section 11.2.2.
+(Design rationale: `docs/spec.md` §11.2.2 — informational; this file
+suffices to operate.)
 
 ## Inputs (from your spawn prompt + skill chain)
 

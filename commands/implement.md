@@ -113,9 +113,10 @@ git branch -D task/<ticket-lowercased>-<slug>   # local-only; never pushed in dr
 
 ## Spawn the teammate pair
 
-Use the agent-team spawn mechanism (see spec Section 18.3 for the
-canonical spawn-prompt structure). Spawn two teammates with deterministic
-names so the operator can reference them later:
+Use the agent-team spawn mechanism. The spawn-prompt structure is
+shown below in full — don't go fetch the spec for this; everything
+needed is right here. Spawn two teammates with deterministic names so
+the operator can reference them later:
 
 **Teammate 1 — Mr. Smith**, agent type `smith`, name `smith-<ticket>`:
 

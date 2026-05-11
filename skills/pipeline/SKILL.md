@@ -8,7 +8,8 @@ description: Drive Smith's three-gate pipeline (SPEC → PLAN → IMPL) with bou
 You are inside a Mr. Smith teammate session (ticket mode). This skill
 is the meat of Smith's work. It runs after `smith:enrich`.
 
-For the full contract see `docs/spec.md` Section 8.
+(Design rationale: `docs/spec.md` §8 — informational; this file
+suffices to operate.)
 
 ## Inputs (from your spawn prompt + skill chain)
 
