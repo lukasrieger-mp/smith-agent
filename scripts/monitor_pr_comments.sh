@@ -3,7 +3,10 @@
 # comments. Emits a JSON notification line whenever a PR gains new comments
 # compared to the previous poll.
 #
-# Default interval: 60s (reviewer responsiveness matters more than JIRA).
+# Active interval: 60s (reviewer responsiveness matters more than JIRA).
+# Backoff: after SMITH_PR_POLL_QUIET_CYCLES consecutive cycles with no new
+# comments, the interval steps up to SMITH_PR_POLL_BACKOFF_INTERVAL (default
+# 30 min). Any new comment snaps the cadence back to the active interval.
 #
 # Notification schema:
 #   {"type":"smith.pr.new_comments","pr":4321,"new_count":2,"branch":"task/app-1234-foo"}
@@ -14,9 +17,13 @@
 # Errors from `gh` (network, auth) are swallowed; monitor retries next interval.
 
 set -uo pipefail
-INTERVAL="${SMITH_PR_POLL_INTERVAL:-60}"
+ACTIVE_INTERVAL="${SMITH_PR_POLL_INTERVAL:-60}"
+BACKOFF_INTERVAL="${SMITH_PR_POLL_BACKOFF_INTERVAL:-1800}"
+QUIET_CYCLE_THRESHOLD="${SMITH_PR_POLL_QUIET_CYCLES:-10}"
+MAX_CYCLES="${SMITH_MONITOR_MAX_CYCLES:-0}"   # 0 = unbounded; test hook
 STATE_DIR=".smith/state/pr-comments"
 ONESHOT="${SMITH_MONITOR_ONESHOT:-0}"
+NOTIFY_COUNT=0   # set by emit_diff_for_each_pr each cycle
 
 # Test override: feed a fake `gh pr list` via SMITH_DRY_RUN_PRS_FIXTURE (a path to
 # a JSON fixture). Used by the test suite to avoid network calls.
@@ -32,19 +39,30 @@ gh_list_open_prs() {
 # Test override: feed a fake per-PR thread list via SMITH_DRY_RUN_PR_THREADS_DIR
 # (a directory with files named pr-<num>.json containing a JSON array of
 # unresolved thread ids).
+#
+# Note: `reviewThreads` only exists on the GraphQL API — `gh pr view --json
+# reviewThreads` errors out with "Unknown JSON field". So we go through
+# `gh api graphql` instead.
 gh_pr_unresolved_threads() {
   local pr="$1"
   if [[ -n "${SMITH_DRY_RUN_PR_THREADS_DIR:-}" ]]; then
     cat "$SMITH_DRY_RUN_PR_THREADS_DIR/pr-$pr.json" 2>/dev/null || echo "[]"
   else
-    gh pr view "$pr" --json reviewThreads 2>/dev/null \
-      | jq -c '[.reviewThreads[] | select(.isResolved | not) | .id] | sort' \
+    local owner repo
+    owner=$(gh repo view --json owner -q .owner.login 2>/dev/null) || { echo "[]"; return; }
+    repo=$(gh repo view --json name -q .name 2>/dev/null) || { echo "[]"; return; }
+    gh api graphql \
+      -f query='query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100){nodes{id isResolved}}}}}' \
+      -f owner="$owner" -f repo="$repo" -F number="$pr" 2>/dev/null \
+      | jq -c '[.data.repository.pullRequest.reviewThreads.nodes[]
+               | select(.isResolved | not) | .id] | sort' \
       || echo "[]"
   fi
 }
 
 emit_diff_for_each_pr() {
   local prs pr current last branch new_count
+  NOTIFY_COUNT=0
   prs=$(gh_list_open_prs)
 
   while IFS=$'\t' read -r pr branch; do
@@ -63,6 +81,7 @@ emit_diff_for_each_pr() {
       if [[ "${new_count:-0}" -gt 0 ]]; then
         printf '{"type":"smith.pr.new_comments","pr":%s,"new_count":%s,"branch":"%s"}\n' \
                "$pr" "$new_count" "$branch"
+        NOTIFY_COUNT=$((NOTIFY_COUNT + 1))
       fi
       mkdir -p "$STATE_DIR"
       echo "$current" > "$state_file"
@@ -75,7 +94,37 @@ if [[ "$ONESHOT" == "1" ]]; then
   exit 0
 fi
 
+quiet_cycles=0
+interval="$ACTIVE_INTERVAL"
+cycle=0
 while true; do
+  # Gate: only do real work when watchdog is armed. The /smith:watchdog
+  # command writes .smith/state/watchdog-mode on invocation. While the
+  # file is absent, sleep at the active interval and loop. Cheap
+  # idle — no gh calls, no state writes.
+  if [[ ! -f .smith/state/watchdog-mode ]]; then
+    sleep "$ACTIVE_INTERVAL"
+    cycle=$((cycle + 1))
+    if (( MAX_CYCLES > 0 && cycle >= MAX_CYCLES )); then break; fi
+    continue
+  fi
+
   emit_diff_for_each_pr
-  sleep "$INTERVAL"
+  if (( NOTIFY_COUNT > 0 )); then
+    quiet_cycles=0
+    interval="$ACTIVE_INTERVAL"
+  else
+    quiet_cycles=$((quiet_cycles + 1))
+    if (( quiet_cycles >= QUIET_CYCLE_THRESHOLD )); then
+      interval="$BACKOFF_INTERVAL"
+    fi
+  fi
+  mkdir -p "$STATE_DIR"
+  printf '{"quiet_cycles":%d,"interval":%d}\n' "$quiet_cycles" "$interval" \
+    > "$STATE_DIR/cadence.json"
+  cycle=$((cycle + 1))
+  if (( MAX_CYCLES > 0 && cycle >= MAX_CYCLES )); then
+    break
+  fi
+  sleep "$interval"
 done

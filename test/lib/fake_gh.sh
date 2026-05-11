@@ -7,8 +7,12 @@
 #
 # Supported invocations:
 #   gh auth status                                    → exit 0 silently
+#   gh repo view --json owner -q .owner.login         → echo "fake-owner"
+#   gh repo view --json name -q .name                 → echo "fake-repo"
 #   gh pr list ...--json...                           → cat $SMITH_FAKE_GH_PR_LIST_FIXTURE
-#   gh pr view <N> --json reviewThreads...            → cat $SMITH_FAKE_GH_PR_VIEW_DIR/pr-<N>.json
+#   gh api graphql -f query=... -F number=<N> ...     → cat $SMITH_FAKE_GH_PR_VIEW_DIR/pr-<N>.json
+#                                                       (GraphQL response shape — `reviewThreads`
+#                                                       lives at `.data.repository.pullRequest`)
 #   gh pr create ...                                  → log, exit 0,
 #                                                       prints "$SMITH_FAKE_GH_PR_URL" if set
 #   gh pr edit <N> --add-label ...                    → log, exit 0
@@ -27,13 +31,21 @@ case "$args" in
   "auth status")
     exit 0
     ;;
+  "repo view --json owner"*)
+    echo "fake-owner"
+    ;;
+  "repo view --json name"*)
+    echo "fake-repo"
+    ;;
   "pr list"*"--json"*)
     [[ -n "${SMITH_FAKE_GH_PR_LIST_FIXTURE:-}" ]] || { echo "fake-gh: SMITH_FAKE_GH_PR_LIST_FIXTURE unset" >&2; exit 99; }
     cat "$SMITH_FAKE_GH_PR_LIST_FIXTURE"
     ;;
-  "pr view "*"--json"*)
-    # Extract the PR number, second arg after "view"
-    pr_num=$(printf '%s\n' "$args" | awk '{for (i=1;i<=NF;i++) if ($i == "view") print $(i+1)}')
+  "api graphql"*)
+    # Extract the integer from `-F number=<N>`. Use grep so multi-line
+    # query strings don't trip up word-splitting.
+    pr_num=$(printf '%s' "$args" | grep -oE 'number=[0-9]+' | tail -1 | sed 's/number=//')
+    [[ -n "$pr_num" ]] || { echo "fake-gh: could not parse number= from: $args" >&2; exit 99; }
     fixture="${SMITH_FAKE_GH_PR_VIEW_DIR:-/no/such/dir}/pr-$pr_num.json"
     [[ -f "$fixture" ]] || { echo "fake-gh: no fixture at $fixture" >&2; exit 99; }
     cat "$fixture"

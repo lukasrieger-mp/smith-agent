@@ -18,38 +18,48 @@ export PATH="$TMP/bin:$PATH"
 export SMITH_FAKE_GH_LOG="$TMP/gh.log"
 export SMITH_FAKE_GH_PR_VIEW_DIR="$TMP/pr-view"
 
-# Fixture: PR #4321 with 3 threads (2 unresolved, 1 resolved)
+# Fixture: PR #4321 with 3 threads (2 unresolved, 1 resolved). Shape is
+# the GraphQL response since gh_pr_unresolved_comments.sh now calls
+# `gh api graphql` instead of `gh pr view --json reviewThreads`.
 cat > "$TMP/pr-view/pr-4321.json" <<'EOF'
 {
-  "reviewThreads": [
-    {
-      "id": "PRRT_thread1",
-      "isResolved": false,
-      "path": "src/foo.kt",
-      "line": 42,
-      "comments": [
-        {"body": "consider null safety here", "author": {"login": "alice"}}
-      ]
-    },
-    {
-      "id": "PRRT_thread2",
-      "isResolved": true,
-      "path": "src/bar.kt",
-      "line": 17,
-      "comments": [
-        {"body": "fixed already", "author": {"login": "bob"}}
-      ]
-    },
-    {
-      "id": "PRRT_thread3",
-      "isResolved": false,
-      "path": "src/baz.kt",
-      "line": 100,
-      "comments": [
-        {"body": "missing test", "author": {"login": "carol"}}
-      ]
+  "data": {
+    "repository": {
+      "pullRequest": {
+        "reviewThreads": {
+          "nodes": [
+            {
+              "id": "PRRT_thread1",
+              "isResolved": false,
+              "path": "src/foo.kt",
+              "line": 42,
+              "comments": {"nodes": [
+                {"body": "consider null safety here", "author": {"login": "alice"}}
+              ]}
+            },
+            {
+              "id": "PRRT_thread2",
+              "isResolved": true,
+              "path": "src/bar.kt",
+              "line": 17,
+              "comments": {"nodes": [
+                {"body": "fixed already", "author": {"login": "bob"}}
+              ]}
+            },
+            {
+              "id": "PRRT_thread3",
+              "isResolved": false,
+              "path": "src/baz.kt",
+              "line": 100,
+              "comments": {"nodes": [
+                {"body": "missing test", "author": {"login": "carol"}}
+              ]}
+            }
+          ]
+        }
+      }
     }
-  ]
+  }
 }
 EOF
 
@@ -72,13 +82,16 @@ echo "$got" | jq -e 'all(has("id") and has("path") and has("line") and has("comm
   || { echo "FAIL: missing schema fields" >&2; exit 1; }
 
 # Empty PR (no review threads at all)
-echo '{"reviewThreads": []}' > "$TMP/pr-view/pr-9999.json"
+echo '{"data":{"repository":{"pullRequest":{"reviewThreads":{"nodes":[]}}}}}' \
+  > "$TMP/pr-view/pr-9999.json"
 got=$(bash "$SCRIPT" 9999)
 assert_eq "[]" "$got" "empty-pr"
 
 # All threads resolved
 cat > "$TMP/pr-view/pr-5555.json" <<'EOF'
-{"reviewThreads": [{"id":"x","isResolved":true,"path":"a","line":1,"comments":[]}]}
+{"data":{"repository":{"pullRequest":{"reviewThreads":{"nodes":[
+  {"id":"x","isResolved":true,"path":"a","line":1,"comments":{"nodes":[]}}
+]}}}}}
 EOF
 got=$(bash "$SCRIPT" 5555)
 assert_eq "[]" "$got" "all-resolved"
@@ -86,8 +99,10 @@ assert_eq "[]" "$got" "all-resolved"
 # Missing arg
 if bash "$SCRIPT" 2>/dev/null; then echo "FAIL: missing arg" >&2; exit 1; fi
 
-# Verify gh was called with --json reviewThreads
-grep -q "pr view 4321 --json reviewThreads" "$TMP/gh.log" \
-  || { echo "FAIL: gh not invoked with expected args" >&2; cat "$TMP/gh.log" >&2; exit 1; }
+# Verify gh was called via GraphQL API with number=4321
+grep -qF -e "api graphql" "$TMP/gh.log" \
+  || { echo "FAIL: gh api graphql not invoked" >&2; cat "$TMP/gh.log" >&2; exit 1; }
+grep -qF -e "number=4321" "$TMP/gh.log" \
+  || { echo "FAIL: gh not invoked with number=4321" >&2; cat "$TMP/gh.log" >&2; exit 1; }
 
 echo "PASS gh_pr_unresolved_comments.test.sh"

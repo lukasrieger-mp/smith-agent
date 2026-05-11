@@ -25,15 +25,20 @@ suffices to operate.)
 The pipeline ran clean: spec + plan + impl committed, quality checks
 green. Open a normal draft PR.
 
-1. Push the branch:
+1. Ensure the GitHub labels Smith uses actually exist in the repo. The
+   helper is idempotent — a no-op when the labels are already there:
+   ```
+   bash $SMITH_PLUGIN_ROOT/scripts/gh_ensure_labels.sh
+   ```
+2. Push the branch:
    ```
    git push -u origin "$branch"
    ```
-2. Compose the PR title:
+3. Compose the PR title:
    ```
    title="[<TICKET-KEY>] <ticket-summary-from-jira>"
    ```
-3. Compose the PR body — a Markdown doc with these sections:
+4. Compose the PR body — a Markdown doc with these sections:
    - **Links**: JIRA ticket URL (full link).
    - **What changed** — one bullet per high-level component touched.
      Derive from `git diff --stat origin/develop...HEAD` grouped by
@@ -55,7 +60,7 @@ green. Open a normal draft PR.
      (`docs/superpowers/specs/<…>-design.md`, `docs/superpowers/plans/<…>.md`).
    - **Footer**: `Drafted by Smith (autonomous agent).` Append
      ` [--confident]` when that flag was active.
-4. Create the draft PR:
+5. Create the draft PR:
    ```
    gh pr create --draft \
      --title "$title" \
@@ -65,15 +70,15 @@ green. Open a normal draft PR.
      --label smith-authored
    ```
    Capture the PR URL from `gh`'s stdout.
-5. Remove the `smith-implementing` JIRA label:
+6. Remove the `smith-implementing` JIRA label:
    ```
    acli jira workitem edit --key "$ticket" --label-remove smith-implementing
    ```
-6. Append log:
+7. Append log:
    ```
    <ts> | smith:pr | $ticket | success-pr | url=<url> branch=$branch
    ```
-7. Return the PR URL to the caller; populate the outcome JSON's
+8. Return the PR URL to the caller; populate the outcome JSON's
    `pr_url` field.
 
 ### Path B — WIP-stuck
@@ -82,7 +87,11 @@ The pipeline returned stuck or error after the retry. Smith is handing
 this work back to a human. Open a WIP draft PR with all the context the
 human will need.
 
-1. **Promote artefacts** so the next human sees them in the PR:
+1. Ensure the GitHub labels Smith uses actually exist:
+   ```
+   bash $SMITH_PLUGIN_ROOT/scripts/gh_ensure_labels.sh
+   ```
+2. **Promote artefacts** so the next human sees them in the PR:
    ```
    bash $SMITH_PLUGIN_ROOT/scripts/promote_smith_artifacts.sh "$ticket"
    ```
@@ -92,21 +101,21 @@ human will need.
    `wip(smith): partial work at point of stuck — <ticket>` commit.
    Spec and plan files were already committed per-gate by
    `smith:pipeline`, so they ride along automatically.
-2. Push the branch (still no force):
+3. Push the branch (still no force):
    ```
    git push -u origin "$branch"
    ```
-3. Compose title:
+4. Compose title:
    ```
    title="[WIP - agent-stuck] [<TICKET-KEY>] <summary>"
    ```
-4. Compose body — same sections as the success path PLUS a prominent
+5. Compose body — same sections as the success path PLUS a prominent
    "Where Smith got stuck" section at the top, containing:
    - Which gate failed (spec / plan / diff / build)
    - The `stuck_reason` verbatim
    - Anderson's last findings (if applicable), formatted as a list
    - The last log entries from `<target>/.smith/log.txt`
-5. Create the draft PR with both labels:
+6. Create the draft PR with both labels:
    ```
    gh pr create --draft \
      --title "$title" \
@@ -116,7 +125,7 @@ human will need.
      --label smith-authored \
      --label needs-human-attention
    ```
-6. **Swap the JIRA labels**:
+7. **Swap the JIRA labels**:
    ```
    acli jira workitem edit --key "$ticket" \
         --label-remove smith-implementing \
@@ -124,11 +133,11 @@ human will need.
    ```
    **Do not** post a JIRA comment (per spec Section 6.6 — labels carry
    the signal; the PR body holds the narrative).
-7. Append log:
+8. Append log:
    ```
    <ts> | smith:pr | $ticket | wip-stuck-pr | url=<url> reason=<one-line>
    ```
-8. Return the PR URL; populate the outcome JSON.
+9. Return the PR URL; populate the outcome JSON.
 
 ## Hard rules (always)
 

@@ -1,5 +1,5 @@
 ---
-description: Arm the autonomous Smith watchdog. Starts background monitors; lead reacts to notifications by dispatching teammate pairs within the 2-cap.
+description: Arm the autonomous Smith watchdog. Starts background monitors; lead reacts to notifications by dispatching teammate pairs within the 2-cap. Flag: `--pr-only` (ignore JIRA candidates; only react to PR review comments).
 ---
 
 # /smith:watchdog
@@ -8,21 +8,58 @@ You (the watchdog lead session) have been asked to arm the autonomous
 watchdog. This is the entry point for Smith's event-driven operation
 (spec Section 5.6).
 
+## Arguments
+
+- `$1` (optional): `--pr-only` — only react to `smith.pr.new_comments`
+  notifications. JIRA-candidate notifications are received but ignored;
+  no new ticket-mode dispatches happen in this session. Useful when an
+  open Smith-authored PR is under active review and you want fast
+  iteration on reviewer comments without the watchdog also picking up
+  fresh tickets.
+
+  When `--pr-only` is active, the `pr-comments` monitor also adapts its
+  cadence: active polling at 60 sec, backing off to 30 min after 10
+  consecutive quiet cycles (no new comments). Any new comment snaps it
+  back to 60 sec. (The backoff is the monitor's default behaviour
+  regardless of mode; --pr-only just makes it the dominant signal.)
+
 ## What this command actually does
 
-The three plugin monitors (`monitors/monitors.json`) are gated on
-`"when": "on-skill-invoke:watchdog"`. Until you invoke this skill, they
-stay dormant. Invoking it starts them:
+The three plugin monitors (`monitors/monitors.json`) start as background
+processes when Claude Code loads this plugin, but each one **gates its
+work on the presence of `.smith/state/watchdog-mode`**. While that file
+is absent, the monitor processes are running but idle — no `gh` / `acli`
+calls, no state writes. `/smith:watchdog` creates that file (with
+content `full` or `pr-only`), which is what flips the monitors from
+idle to active.
+
+`/smith:watchdog` also loads the reaction skill into the lead session's
+context so the lead knows how to handle incoming notifications.
+
+Background monitors:
 
 - `jira-candidates` — polls JIRA every 30 min (configurable via the
   `polling_minutes` user-config); emits `smith.jira.new_candidates`
-  only when a *new* eligible ticket key appears.
-- `pr-comments` — polls open Smith-authored PRs every 60 sec; emits
+  only when a *new* eligible ticket key appears. *Notifications are
+  ignored by the lead when `--pr-only` is active.*
+- `pr-comments` — polls open Smith-authored PRs every 60 sec (active),
+  backing off to 30 min after 10 quiet cycles. Emits
   `smith.pr.new_comments` when a PR gains new unresolved threads.
 - `stop-sentinel` — watches `.smith/STOP` every 2 sec; emits
   `smith.stop.requested` or `smith.stop.lifted` on state change.
 
-After this command, the watchdog runs for the lifetime of the session.
+To **disarm** the watchdog without exiting Claude Code:
+```
+rm .smith/state/watchdog-mode
+```
+Monitors stay alive but go back to idle. Re-arm by invoking
+`/smith:watchdog` again.
+
+(History: monitors were originally gated declaratively via
+`on-skill-invoke:watchdog` in `monitors.json`, but that gate only fires
+for direct user `/skill` invocations and not for LLM-driven Skill tool
+calls from within slash commands. We moved the gate into each monitor
+script via the `.smith/state/watchdog-mode` sentinel file.)
 
 ## Pre-flight
 
@@ -35,6 +72,16 @@ After this command, the watchdog runs for the lifetime of the session.
    ```
    bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh target_repo > /dev/null
    bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh count > /dev/null
+   ```
+3. Record the watchdog mode so the skill knows how to react. Without
+   `--pr-only`, write `full`; with it, write `pr-only`:
+   ```
+   mkdir -p .smith/state
+   if [[ "${1:-}" == "--pr-only" ]]; then
+     echo pr-only > .smith/state/watchdog-mode
+   else
+     echo full > .smith/state/watchdog-mode
+   fi
    ```
 
 Both should be silent on success.
@@ -63,10 +110,11 @@ notification you receive for the rest of the session.
 
 Summary of the rules:
 
-- `smith.jira.new_candidates` → if cap has room and not stopped,
-  fetch fresh candidates, pick top eligible, dispatch ticket-mode pair
+- `smith.jira.new_candidates` → if cap has room, not stopped, **and mode
+  is `full`**, fetch fresh candidates, pick top eligible, dispatch
+  ticket-mode pair. In `pr-only` mode, log "ignored (pr-only)" and skip.
 - `smith.pr.new_comments` → if cap has room and no PR-fix Smith
-  already on that PR, dispatch PR-fix-mode pair
+  already on that PR, dispatch PR-fix-mode pair (regardless of mode)
 - `smith.stop.requested` → set `smith_stop_active = true`, pause new
   dispatches; in-flight teammates wrap up at next safe checkpoint
 - `smith.stop.lifted` → clear the flag, resume

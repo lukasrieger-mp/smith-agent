@@ -51,6 +51,9 @@ if [[ "$ONESHOT" == "1" ]]; then
 fi
 
 while true; do
-  emit_diff_if_any
+  # Gate: only poll JIRA when watchdog is armed.
+  if [[ -f .smith/state/watchdog-mode ]]; then
+    emit_diff_if_any
+  fi
   sleep "$INTERVAL"
 done

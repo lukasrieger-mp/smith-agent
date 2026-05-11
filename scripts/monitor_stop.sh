@@ -40,6 +40,9 @@ if [[ "$ONESHOT" == "1" ]]; then
 fi
 
 while true; do
-  poll_once
+  # Gate: only watch the kill switch when watchdog is armed.
+  if [[ -f .smith/state/watchdog-mode ]]; then
+    poll_once
+  fi
   sleep "$INTERVAL"
 done

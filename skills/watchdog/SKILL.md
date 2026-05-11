@@ -37,12 +37,26 @@ The cap-count is *not* in working memory — read it fresh from
 `active_smiths.sh count` whenever you need it (defends against
 restart-after-crash and against working memory drift).
 
+## Watchdog mode (from the slash command)
+
+The `/smith:watchdog` command writes the active mode to
+`.smith/state/watchdog-mode` (either `full` or `pr-only`). Read this
+file fresh whenever a `smith.jira.new_candidates` notification arrives
+— do not cache it. Default to `full` if the file is missing.
+
+In `pr-only` mode, the operator has signalled that they want this
+session to focus on reviewer iteration on existing PRs without
+picking up new tickets. The JIRA monitor still runs and emits
+notifications; the lead simply ignores them.
+
 ## Notification reactions (Phase 6 live)
 
 ### On `{"type": "smith.jira.new_candidates", "keys": [...]}`
 
 ```
 if smith_stop_active: log "ignored (stopped)"; return
+mode=$(cat .smith/state/watchdog-mode 2>/dev/null || echo full)
+if [[ "$mode" == "pr-only" ]]: log "ignored (pr-only)"; return
 active=$(bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh count)
 max=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_smiths)
 if [[ $active -ge $max ]]: log "ignored (cap $active/$max)"; return

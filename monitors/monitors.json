@@ -2,19 +2,16 @@
   {
     "name": "jira-candidates",
     "command": "${CLAUDE_PLUGIN_ROOT}/scripts/monitor_jira.sh",
-    "description": "New eligible JIRA candidate tickets (sprint, SP ≤ 2, no opt-out labels)",
-    "when": "on-skill-invoke:watchdog"
+    "description": "New eligible JIRA candidate tickets (sprint, SP ≤ 2, no opt-out labels)"
   },
   {
     "name": "pr-comments",
     "command": "${CLAUDE_PLUGIN_ROOT}/scripts/monitor_pr_comments.sh",
-    "description": "New unresolved review comments on Smith-authored draft PRs",
-    "when": "on-skill-invoke:watchdog"
+    "description": "New unresolved review comments on Smith-authored draft PRs"
   },
   {
     "name": "stop-sentinel",
     "command": "${CLAUDE_PLUGIN_ROOT}/scripts/monitor_stop.sh",
-    "description": "Kill switch — .smith/STOP file requested or lifted",
-    "when": "on-skill-invoke:watchdog"
+    "description": "Kill switch — .smith/STOP file requested or lifted"
   }
 ]
