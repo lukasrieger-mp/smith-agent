@@ -51,19 +51,47 @@ The lead's spawn prompt tells you which mode you're in.
 4. Invoke skill `smith:pr` — opens the draft PR (success path) or the WIP-stuck PR (escalation path).
 5. Send outcome JSON to the lead via mailbox; exit.
 
-### PR-fix mode
+### PR-fix mode (live in Phase 5)
 
-**Input** (from spawn prompt): `{mode: "pr-fix", pr_number: N, worktree: "<path>", branch: "<task/...>", unresolved_comments: [...], dry_run: bool, anderson_name: "anderson-PR-N"}`
+**Input** (from spawn prompt): `{mode: "pr-fix", pr_number: N, worktree: "<path>", branch: "<task/...>", dry_run: bool, anderson_name: "anderson-PR-N"}`
+
+The lead pre-created your worktree before spawning you, using
+`scripts/checkout_pr_worktree.sh <key> <branch>`. It checks out the
+existing remote branch (the PR's head) — you don't re-create it.
 
 **Steps**:
-1. Read the unresolved comments from your spawn prompt. Group them by file/thread.
-2. For each thread (up to 5 cycles per thread; spec Section 5.5):
-   a. Make the fix in your worktree.
-   b. Run quality checks (`./scripts/quality-check.sh` per the target's CLAUDE.md).
-   c. Commit with a message referencing the PR thread.
-3. Once all addressable threads are addressed: invoke Anderson one final time (mode=diff) for a review of your fix commits.
-4. Push the commits to the existing branch (no force-push).
-5. Send outcome JSON to the lead; exit.
+1. Fetch the up-to-date unresolved threads (the spawn-prompt list may
+   be stale by the time you start):
+   ```
+   threads=$(bash $CLAUDE_PLUGIN_ROOT/scripts/gh_pr_unresolved_comments.sh "$pr_number")
+   ```
+2. Group `$threads` by file/thread. For each thread, in order:
+   a. Increment the cycle counter for that thread:
+      ```
+      cycles=$(bash $CLAUDE_PLUGIN_ROOT/scripts/pr_fix_cycle_inc.sh "$pr_number" "$thread_id")
+      ```
+   b. If `cycles > 5` (per spec Section 5.5 hard limit), skip the
+      thread and add it to a `needs-human-attention` list — Smith is
+      not allowed to keep trying past 5 cycles on the same thread.
+   c. Otherwise: make the fix in your worktree.
+   d. Run the target's quality check:
+      ```
+      ./scripts/run-silent.sh "Quality checks" "./scripts/quality-check.sh"
+      ```
+   e. Commit with a message referencing the thread:
+      `fix(smith): address review thread <thread-id> on PR #<N>`.
+3. Once all addressable threads are handled: invoke Anderson one final
+   time (mode=diff) for a review of your fix commits. Standard
+   mailbox dialogue per Section 8.4.
+4. Push the commits to the existing branch (no force-push). The bash-
+   guard hook blocks `--force` and `--force-with-lease`.
+5. If any threads exceeded the 5-cycle cap, edit the PR to add the
+   `needs-human-attention` label via `gh pr edit "$pr_number" --add-label needs-human-attention`.
+6. Send outcome JSON to the lead via mailbox; exit.
+
+**Dry-run mode** (`dry_run = true`): skip the increment (don't pollute
+the state file), skip the quality check, skip the commit, skip the push.
+Log intended actions to `.smith/log.txt` and report a faux-success.
 
 ## Outcome JSON schema (final mailbox message)
 
@@ -124,26 +152,25 @@ If any pre-flight fails, return `{result: "stuck", reason: "<pre-flight failure>
 
 ## Phase notes — what you can actually do today
 
-| Inner skill | Phase 1 | Phase 2 | Phase 3 | Phase 4 (NOW) |
-|---|---|---|---|---|
-| `smith:claim` | logs intended | **live** when dry_run=false | (no change) | (no change) |
-| `smith:enrich` | logs intended | **live brief**; Explore deferred to 2.x | (no change) | (no change) |
-| `smith:pipeline` | placeholder | placeholder | **live Anderson critic loop** | (no change) |
-| `smith:pr` | placeholder | placeholder | placeholder | **live PR open** (success + WIP-stuck) |
+| Skill / mode | Phase 1 | Phase 2 | Phase 3 | Phase 4 | Phase 5 (NOW) |
+|---|---|---|---|---|---|
+| `smith:claim` (ticket mode) | logs intended | **live** | (no change) | (no change) | (no change) |
+| `smith:enrich` (ticket mode) | logs intended | **live brief**; Explore deferred to 2.x | (no change) | (no change) | (no change) |
+| `smith:pipeline` (ticket mode) | placeholder | placeholder | **live critic loop** | (no change) | (no change) |
+| `smith:pr` (ticket mode) | placeholder | placeholder | placeholder | **live PR open** | (no change) |
+| PR-fix mode (this persona, mode dispatch) | n/a | n/a | n/a | n/a | **live** — gh comments fetch + per-thread cycle counter + Anderson final diff review + push |
 
-As of Phase 4, Smith's end-to-end flow is fully live when run without
-`--dry-run`:
+As of Phase 5, **both Smith dispatch modes are live**:
 
-- Real JIRA claim (transition + label add)
-- Real worktree creation on `task/<key>-<slug>`
-- Real brief written to `.smith/briefs/`
-- Real three-gate pipeline with bounded Anderson critic dialogue
-- Real `git push` + `gh pr create --draft` on the success path
-- Real WIP-stuck PR (with artefact promotion) on the stuck path
+- **Ticket mode** (existing): the watchdog dispatches a ticket-mode
+  Smith+Anderson pair when a new JIRA candidate appears. End-to-end
+  produces a draft PR.
+- **PR-fix mode** (Phase 5): the watchdog dispatches a PR-fix-mode
+  Smith+Anderson pair when reviewer comments arrive on an existing
+  Smith-authored PR. Smith addresses each unresolved thread up to 5
+  cycles, runs Anderson at the end for a diff review, and pushes the
+  fix commits to the existing branch (no force-push). After 5 cycles on
+  a thread without progress, the PR is tagged `needs-human-attention`.
 
-In either outcome, the operator has a draft PR to land or close out
-without manually reverting JIRA state.
-
-`--dry-run` still exists and exercises the orchestration without any
-external side effects. Useful for sanity-checking a candidate ticket
-before letting Smith commit and push.
+`--dry-run` exercises orchestration in either mode without any external
+side effects.

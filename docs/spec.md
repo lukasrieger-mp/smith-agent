@@ -521,10 +521,10 @@ cover routine notifications, so adding comments would create noise rather than
 signal. All "where Smith got stuck" detail lives in the PR body on the
 WIP-stuck path (Section 10.3), not in JIRA.
 
-This is a strict rule: `smith:claim`, `smith:pr`, and `smith:pr-watch` must not
-call `acli jira workitem comment` for routine state changes. The only label
-operations they perform are documented in 6.5; status transitions are limited
-to the one in 6.4.
+This is a strict rule: `smith:claim`, `smith:pr`, and Smith's PR-fix-mode
+workflow must not call `acli jira workitem comment` for routine state
+changes. The only label operations they perform are documented in 6.5;
+status transitions are limited to the one in 6.4.
 
 ### 6.7 Platform classification
 
@@ -558,7 +558,7 @@ lowercased, ASCII, hyphen-separated, capped at 40 chars. Encoded in
   `git fetch origin develop`).
 - On success: `smith:pr` pushes branch + opens draft PR.
 - On WIP-stuck: `smith:pr` still pushes branch + opens *WIP* draft PR.
-- After draft PR is open: `smith:pr-watch` only adds commits; no rebase, no
+- After draft PR is open: PR-fix-mode Smiths only add commits; no rebase, no
   force-push.
 - If `develop` has drifted by ≥ N commits since branch creation, one rebase
   attempt is allowed. On conflict → escalate to WIP-stuck.
@@ -952,13 +952,6 @@ Configured in `monitors/monitors.json`; full design in Section 5.6.
 
 Each monitor maintains its own state file under `.smith/state/` to diff
 against the previous poll, so notifications only fire on *change*.
-
-#### 11.1.3 `smith:pr-watch` (legacy, may be retired)
-
-The pr-watch skill from the pre-monitor design is now largely redundant —
-the `pr-comments` monitor handles PR-comment fan-out via notifications.
-Kept temporarily as a manual "rescan all PRs now" trigger. May be removed
-in a later phase if the monitor proves sufficient.
 
 ### 11.2 Inner-teammate skills (load inside Smith teammate's context)
 
@@ -1367,9 +1360,15 @@ decompose into phases that can be built and verified independently:
    a single wip commit), push, draft PR with `needs-human-attention`
    label, JIRA label swap to `auto-impl-failed`. No JIRA comments
    anywhere (spec Section 6.6).
-6. **Phase 5 — PR-fix mode (Smith dispatch mode #2) + `smith:pr-watch`.**
-   Per-PR worktrees, comment polling, fix-cycle counter, fan-out under the
-   2-cap.
+6. **Phase 5 — PR-fix mode (Smith dispatch mode #2). ✅ DONE.** The
+   `agents/smith.md` persona now has a live PR-fix workflow. New
+   scripts: `checkout_pr_worktree.sh` (checks out the PR's head ref
+   into a worktree, mirror of `make_worktree.sh` for existing remote
+   branches), `gh_pr_unresolved_comments.sh` (fetch + filter via
+   `gh pr view --json reviewThreads`), `pr_fix_cycle_inc.sh`
+   (per-thread cycle counter; tags PR `needs-human-attention` after 5
+   cycles per spec Section 5.5). The legacy `skills/pr-watch/` was
+   removed — the `pr-comments` monitor (Section 5.6) superseded it.
 7. **Phase 6 — `smith:watchdog` + `/loop` integration + 2-Smith
    concurrency.** Lead's per-tick decision tree (Section 5.3). Manual
    `/smith:implement` override path. First real autonomous run.
@@ -1405,7 +1404,6 @@ modifications beyond the runtime state directory.
     enrich/SKILL.md              → /smith:enrich    (inner-teammate)
     pipeline/SKILL.md            → /smith:pipeline  (inner-teammate)
     pr/SKILL.md                  → /smith:pr        (inner-teammate)
-    pr-watch/SKILL.md            → /smith:pr-watch  (legacy; see 11.1.3)
   hooks/
     hooks.json                   PreToolUse Bash guard (Section 5.7)
   monitors/
@@ -1421,7 +1419,17 @@ modifications beyond the runtime state directory.
     monitor_pr_comments.sh       ← run by pr-comments monitor
     monitor_stop.sh              ← run by stop-sentinel monitor
     hook_bash_guard.sh           ← run by PreToolUse Bash hook
-    promote_smith_artifacts.sh
+    jira_transition.sh           ← live JIRA writes (Phase 2)
+    jira_label_add.sh
+    jira_label_remove.sh
+    make_worktree.sh             ← new branch from origin/develop
+    checkout_pr_worktree.sh      ← existing PR head ref (Phase 5)
+    adf_to_markdown.sh
+    write_brief.sh
+    validate_anderson_reply.sh   ← Anderson schema validator (Phase 3)
+    promote_smith_artifacts.sh   ← WIP-stuck artefact promotion (Phase 4)
+    gh_pr_unresolved_comments.sh ← PR-fix mode comment fetcher (Phase 5)
+    pr_fix_cycle_inc.sh          ← per-thread cycle counter (Phase 5)
   test/
     lib/assert.sh
     fixtures/                    JSON fixtures for script tests

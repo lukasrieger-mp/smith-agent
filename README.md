@@ -107,21 +107,26 @@ docs/plans/                  One plan per phase
 
 ## Status
 
-Phase 4 of 7 done. Smith's end-to-end ticket-implementation flow is
-fully live (gated on `--dry-run`):
+Phase 5 of 7 done. Both Smith dispatch modes are live:
 
-- `smith:claim` — real JIRA transition + label add
-- `smith:enrich` — real brief writing (Explore subagent in 2.x)
-- `smith:pipeline` — real three-gate Anderson critic dialogue
-- `smith:pr` — real `git push` + `gh pr create --draft`, both success
-  and WIP-stuck paths
+**Ticket mode** — implementing a JIRA ticket end-to-end:
+- `smith:claim` — JIRA transition + label add
+- `smith:enrich` — brief writing (Explore subagent deferred to 2.x)
+- `smith:pipeline` — three-gate Anderson critic dialogue
+- `smith:pr` — `git push` + `gh pr create --draft` (success + WIP-stuck)
 
-Operators ending a run get a draft PR either way — no manual JIRA
-cleanup needed. `--dry-run` still works for sanity checks.
+**PR-fix mode** — addressing reviewer comments on Smith's draft PRs:
+- Lead checks out PR's head ref into a worktree
+- Smith fetches unresolved threads, fixes each, runs quality checks,
+  commits per-thread
+- Per-thread cycle counter caps at 5; threads hitting the cap → PR
+  tagged `needs-human-attention`
+- Anderson reviews the final diff before push
 
-Remaining phases:
-- Phase 5 — PR-fix mode (Smith dispatch mode #2) + per-PR worktree
-  fan-out under the 2-Smith cap
-- Phase 6 — Live watchdog + 2-Smith concurrency + autonomous first run
+Either mode ends with a draft PR the operator can land or close.
+
+Remaining: **Phase 6** — wire the watchdog's notification-reaction
+rules to actually dispatch teammate pairs respecting the 2-Smith cap.
+After Phase 6 the watchdog runs autonomously.
 
 See [`docs/spec.md`](docs/spec.md) Section 16 for the full decomposition.
