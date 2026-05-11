@@ -38,11 +38,22 @@ green. Open a normal draft PR.
      Derive from `git diff --stat origin/develop...HEAD` grouped by
      module/path.
    - **How it was tested** — list of `./gradlew` commands run via
-     `run-silent.sh` during the pipeline, plus the umbrella
-     `quality-check.sh` result.
+     `run-silent.sh` during the pipeline.
+     - If the spawn prompt had `confident = false`: include the
+       `quality-check.sh` result. Normal case.
+     - **If `confident = true`**: at the top of this section, emit a
+       prominent callout:
+       ```
+       > ⚠️ This PR was created with `--confident`. The full quality
+       > check (build + tests) was SKIPPED. Only the Kotlin formatter
+       > ran. Reviewer must verify the change builds and tests pass
+       > before merging.
+       ```
+       Then list only the formatter command.
    - **Spec & plan** — links to the committed files
      (`docs/superpowers/specs/<…>-design.md`, `docs/superpowers/plans/<…>.md`).
-   - **Footer**: `Drafted by Smith (autonomous agent).`
+   - **Footer**: `Drafted by Smith (autonomous agent).` Append
+     ` [--confident]` when that flag was active.
 4. Create the draft PR:
    ```
    gh pr create --draft \

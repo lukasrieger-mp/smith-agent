@@ -71,11 +71,29 @@ Anderson with `mode: "plan"`. Commit message:
    delegates per-task implementation to subagents (per the plan's task
    list). The subagent-driven skill handles TDD discipline, per-task
    commits, and review.
-2. Once subagent-driven impl reports completion, run the umbrella
-   quality check (from the *target* repo, per its CLAUDE.md):
-   ```
-   ./scripts/run-silent.sh "Quality checks" "./scripts/quality-check.sh"
-   ```
+2. Run quality checks. The exact command depends on the `confident`
+   flag from your spawn prompt:
+
+   - **If `confident = false` (default)**: run the full umbrella
+     check (build + tests + lint) from the *target* repo per its
+     CLAUDE.md:
+     ```
+     ./scripts/run-silent.sh "Quality checks" "./scripts/quality-check.sh"
+     ```
+     A failure here means the impl is broken; address before
+     proceeding to Anderson.
+
+   - **If `confident = true`**: skip the full umbrella. Only run the
+     Kotlin formatter (auto-fix mode):
+     ```
+     ./scripts/run-silent.sh "Kotlin lint" "./gradlew lintKotlin"
+     ```
+     The `--confident` flag is the operator's explicit "I trust this
+     change, ship without running the test/build cycle" mode. The
+     operator's PR review and Anderson's diff review remain the only
+     gates. Smith MUST surface the `--confident` flag in the PR body
+     (smith:pr handles this).
+
 3. Mailbox Anderson:
    ```
    to:   $anderson_name

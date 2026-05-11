@@ -1,5 +1,5 @@
 ---
-description: Dispatch a Smith+Anderson pair to implement one JIRA ticket. Use `--dry-run` for orchestration without external side effects.
+description: Dispatch a Smith+Anderson pair to implement one JIRA ticket. Flags: `--dry-run` (no external side effects), `--confident` (skip full build+tests, only run formatter).
 ---
 
 # /smith:implement
@@ -12,14 +12,25 @@ trigger the same flow automatically when new candidates appear.
 ## Arguments
 
 - `$1` (required): JIRA ticket key, e.g. `APP-5601`
-- `$2` (optional): `--dry-run` — drive the full orchestration without
-  any external side effect
+- `$2`, `$3` (optional, any order): zero or more of:
+  - `--dry-run` — drive the orchestration without any external side
+    effect (no JIRA writes, no `git push`, no `gh pr create`)
+  - `--confident` — skip the full `quality-check.sh` umbrella (build
+    + tests) in the IMPL gate. Only the formatter (`lintKotlin` per
+    the target's CLAUDE.md) runs. Anderson's diff review still runs.
+    The resulting PR body is marked so the human reviewer knows tests
+    were skipped.
+
+`--confident` is **only available on this manual command**, not on
+watchdog auto-dispatches. The watchdog always runs the full pipeline.
 
 Examples:
 
 ```
 /smith:implement APP-5601
 /smith:implement APP-5601 --dry-run
+/smith:implement APP-5601 --confident
+/smith:implement APP-5601 --dry-run --confident
 ```
 
 ## Pre-flight (do this first, in order)
@@ -113,6 +124,7 @@ names so the operator can reference them later:
 > Worktree: .smith/worktrees/<ticket-lowercased>/
 > Branch: $branch
 > Dry-run: ${DRY_RUN:-false}
+> Confident: ${CONFIDENT:-false}
 > Your Anderson is: anderson-<ticket>
 > Execute smith:claim, smith:enrich, smith:pipeline, smith:pr per spec Section 8.
 > Send {type: smith.outcome, ...} to the lead via mailbox when done.

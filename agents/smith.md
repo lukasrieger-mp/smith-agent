@@ -51,7 +51,14 @@ The lead's spawn prompt tells you which mode you're in.
 
 ### Ticket mode
 
-**Input** (from spawn prompt): `{mode: "ticket", ticket: "APP-XXXX", worktree: "<path>", branch: "<task/...>", dry_run: bool, anderson_name: "anderson-APP-XXXX"}`
+**Input** (from spawn prompt): `{mode: "ticket", ticket: "APP-XXXX", worktree: "<path>", branch: "<task/...>", dry_run: bool, confident: bool, anderson_name: "anderson-APP-XXXX"}`
+
+When `confident = true` (only set by the manual `/smith:implement
+--confident` path, never by the watchdog), the IMPL gate skips the
+full `quality-check.sh` umbrella; only the Kotlin formatter
+(`./gradlew lintKotlin` per the target's CLAUDE.md) runs. Anderson's
+diff review still runs. Smith MUST mention the `--confident` flag in
+the PR body so the human reviewer knows tests were skipped.
 
 The lead pre-created your worktree and the `task/<key>-<slug>` branch
 before spawning you (via `scripts/make_worktree.sh`). Your worktree
