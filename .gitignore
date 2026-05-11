@@ -1,0 +1,17 @@
+### OSX ###
+*.DS_Store
+.AppleDouble
+.LSOverride
+
+### IDE ###
+.idea/
+*.iml
+.vscode/
+
+### Editor scratch ###
+*.swp
+*.swo
+*~
+
+### Test scratch ###
+/tmp-test/

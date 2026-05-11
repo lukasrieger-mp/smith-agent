@@ -1,0 +1,10 @@
+[
+  {
+    "key": "APP-5700",
+    "summary": "Fix navigation on iOS 18",
+    "components": ["iOS"],
+    "priority": "Medium",
+    "story_points": 1,
+    "sprint": "SPRINT 150"
+  }
+]

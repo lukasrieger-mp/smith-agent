@@ -1,0 +1,8 @@
+{
+  "name": "smith",
+  "description": "Autonomous JIRA-driven ticket implementation agent for myposter-app. Picks up SP≤ 2 tickets, drives spec→plan→impl with adversarial review, files draft PRs, and self-corrects against PR review comments. See smith/docs/spec.md.",
+  "author": {
+    "name": "Lukas Rieger",
+    "email": "lukas.rieger@myposter.de"
+  }
+}

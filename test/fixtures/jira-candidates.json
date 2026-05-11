@@ -1,0 +1,18 @@
+[
+  {
+    "key": "APP-5601",
+    "summary": "Hide skeleton loader for repeat visits",
+    "components": ["Android"],
+    "priority": "Medium",
+    "story_points": 1,
+    "sprint": "SPRINT 150"
+  },
+  {
+    "key": "APP-5612",
+    "summary": "Surface localized error in shared snackbar",
+    "components": ["Shared/KMP"],
+    "priority": "High",
+    "story_points": 2,
+    "sprint": "SPRINT 150"
+  }
+]
