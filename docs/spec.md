@@ -1343,12 +1343,16 @@ decompose into phases that can be built and verified independently:
    on this repo's `main` branch; see
    [`docs/plans/2026-05-11-phase-1-skeleton.md`](plans/2026-05-11-phase-1-skeleton.md)
    for status.
-2. **Phase 1.5 — Full SKILL rewrite.** The agent-teams pivot triggered a
-   rewrite of the SKILL.md skeletons and slash commands. Phase 1.5 finishes
-   those rewrites with the agent-team model in mind.
-3. **Phase 2 — Live `smith:claim` + `smith:enrich`.** Real JIRA writes via
-   `acli`, real status transitions, real branch creation. Enrichment uses
-   `Explore` subagent. Validate against one real ticket.
+2. **Phase 1.5 — Full SKILL rewrite. ✅ DONE.** The agent-teams pivot
+   triggered a rewrite of the SKILL.md skeletons and slash commands.
+   Phase 1.5 finished those rewrites with the agent-team model in mind.
+3. **Phase 2 — Live `smith:claim` + `smith:enrich`. ✅ MOSTLY DONE.** Real
+   JIRA writes via `acli` (status transition + idempotent label add),
+   real worktree creation from `origin/develop`, real brief writing with
+   ADF→Markdown flattening. Live behaviour gated on `dry_run=false`.
+   Deferred to Phase 2.x: the Explore subagent integration that fills in
+   the "Smith's reading" section of the brief with affected-files
+   analysis.
 4. **Phase 3 — Live `smith:pipeline` with collaborative critic loop.**
    Wire up brainstorming, writing-plans, subagent-driven-development.
    Activate real Anderson critique via mailbox dialogue (Section 8.4). Test

@@ -55,52 +55,57 @@ state; per-ticket scratch lives in the per-ticket worktree.
 - [ ] Branch ready for draft PR; no commits on `develop`/`main`.
 ```
 
-## Phase 1 workflow (placeholder)
+## Workflow
 
-The Explore subagent integration is wired in Phase 2. For now:
+In **both** dry-run and live modes, this skill writes a brief file at
+`<worktree>/.smith/briefs/<ticket>-brief.md`. The acli read is a safe
+operation (no state changes), so we perform it unconditionally — only
+the optional Explore subagent dispatch is gated on `dry_run`.
+
+### Single-path workflow (Phase 2)
 
 1. Pre-flight:
    ```
+   cd <worktree>
    bash $CLAUDE_PLUGIN_ROOT/scripts/assert_target_repo.sh
    ```
-2. Fetch the ticket:
+2. Fetch + flatten + write the brief in one call:
    ```
-   acli jira workitem view $ticket --fields "summary,description,components" --json
+   brief_path=$(bash $CLAUDE_PLUGIN_ROOT/scripts/write_brief.sh "$ticket")
    ```
-3. Flatten the ADF `description` to plain markdown text. A rough
-   jq walk is acceptable in Phase 1:
+   The script fetches the ticket via `acli`, flattens the ADF
+   `description` to Markdown via `scripts/adf_to_markdown.sh`, and
+   writes the structured brief. "Smith's reading" is filled with
+   Phase 2.x placeholders for now (see below).
+3. Append log:
    ```
-   description=$(echo "$ticket_json" | jq -r '
-     .fields.description | .. | objects | select(.type == "text") | .text
-   ' 2>/dev/null | paste -sd' ' -)
+   <ts> | smith:enrich | $ticket | brief-written | path=$brief_path
    ```
-   (Phase 2 replaces with a proper ADF→Markdown converter.)
-4. Write the brief file with the three sections. For "Smith's reading"
-   and "Proposed DoD", emit Phase-1 placeholder bullets:
-   - `(Phase 1 placeholder: enrichment via Explore subagent comes in Phase 2.)`
-   - `(Phase 1 placeholder DoD.)`
-5. Append to `<target>/.smith/log.txt`:
-   ```
-   <ts> | smith:enrich | $ticket | brief-written | path=<worktree>/.smith/briefs/$ticket-brief.md
-   ```
-6. Echo the brief path.
+4. Echo the brief path to stdout.
 
-## Phase 2 — when this skill goes live
+### Phase 2.x — Explore subagent integration (deferred)
 
-The Explore subagent is dispatched via the Task tool with a focused
-prompt:
+The "Smith's reading" section currently contains placeholder bullets.
+In Phase 2.x, after `write_brief.sh` returns, dispatch the Explore
+subagent via the Task tool with a focused prompt:
 
-> Read the JIRA ticket below. Identify files in the target repo that are
-> likely to be affected by this work. Return a JSON array of
-> `{path, line_range, why}` objects. Be conservative — only include files
-> you can justify. Read `CLAUDE.md` for repo conventions before searching.
+> Read the JIRA ticket below. Identify files in the target repo likely
+> to be affected by this work. Return a JSON array of
+> `{path, line_range, why}` objects. Be conservative — only include
+> files you can justify. Read `CLAUDE.md` for repo conventions before
+> searching.
 >
 > Ticket: $ticket
 > Summary: $summary
-> Description (markdown-rendered): $description
+> Description (Markdown-rendered): <contents of the brief's "Original ticket" section>
 
-The Smith teammate (you) parses Explore's reply and substitutes its
-findings into the "Suspected affected files" section of the brief.
+Parse Explore's reply and rewrite the "Smith's reading" → "Suspected
+affected files" section of the brief in-place.
+
+In `dry_run = true` mode, skip the Explore dispatch entirely (Explore
+reads files but produces no side effects, so this gate is purely for
+token budget hygiene — dry-run runs should be cheap exercise of the
+orchestration).
 
 ## On error
 

@@ -107,8 +107,18 @@ docs/plans/                  One plan per phase
 
 ## Status
 
-Phase 1 of 7 partially complete. The agent-teams pivot triggered a rewrite of
-some Phase 1 deliverables (the SKILL.md skeletons, slash commands, and a new
-`agents/smith.md`). See [`docs/spec.md`](docs/spec.md) Section 16 for the
-phase decomposition and [`docs/plans/2026-05-11-phase-1-skeleton.md`](docs/plans/2026-05-11-phase-1-skeleton.md)
-for current status.
+Phase 2 of 7 done (mostly). Live: plugin loads, monitors run, hook fires,
+`smith:claim` performs real JIRA writes when `--dry-run` is off,
+`smith:enrich` produces a real brief. Placeholder: `smith:pipeline`
+(real Anderson critic loop comes in Phase 3) and `smith:pr` (real PR
+open comes in Phase 4). Deferred sub-phase: Phase 2.x — Explore
+subagent integration for the brief's affected-files analysis.
+
+See [`docs/spec.md`](docs/spec.md) Section 16 for the full phase
+decomposition.
+
+**Practical operator advice today**: prefer `/smith:implement APP-XXXX
+--dry-run` until Phase 4 lands. Without `--dry-run`, Smith WILL move
+the ticket's JIRA state and create a real branch — but won't open a PR,
+leaving you to either pick up the work manually or revert the JIRA
+state by hand.

@@ -59,10 +59,11 @@ no longer `currentUser()`, abort with
 The operator may have manually claimed the ticket while you were
 spawning. Respect their override.
 
-## Phase 1 workflow (dry-run-equivalent for everyone)
+## Workflow
 
-In Phase 1, `smith:claim` is a placeholder. It does NOT perform real
-JIRA writes regardless of the `dry_run` flag. Instead:
+The dry-run flag from your spawn prompt picks the branch:
+
+### When `dry_run = true` (placeholder behaviour)
 
 1. Pre-flight (above).
 2. Race-condition re-query (above).
@@ -76,24 +77,43 @@ JIRA writes regardless of the `dry_run` flag. Instead:
    with `{result: "stuck", reason: "worktree branch mismatch"}`.
 5. Echo `$branch` to stdout.
 
-## Phase 2 — when this skill goes live
+### When `dry_run = false` (Phase 2: live JIRA writes)
 
-In Phase 2, replace steps 3 above with real writes:
+The pre-flight is identical (above). Replace the placeholder logging
+with actual writes via the Phase 2 helper scripts:
 
 ```bash
-# Read the target transition ID
-transitions=$(acli jira workitem view-transitions $ticket --json)
-to_status=$(bash $CLAUDE_PLUGIN_ROOT/scripts/smith_config.sh claim_status)
-transition_id=$(echo "$transitions" | jq -r --arg name "$to_status" \
-  '.[] | select(.to.name == $name) | .id' | head -1)
+# Resolve config
+claim_status=$(bash $CLAUDE_PLUGIN_ROOT/scripts/smith_config.sh claim_status)
+eligible_status=$(bash $CLAUDE_PLUGIN_ROOT/scripts/smith_config.sh eligible_status)
 
-acli jira workitem transition $ticket --transition-id $transition_id
-acli jira workitem edit $ticket --label-add smith-implementing
+# Race-guarded transition. The SMITH_EXPECTED_FROM_STATUS env tells
+# jira_transition.sh to verify the current status is still the
+# eligible one before transitioning — guards against the operator
+# manually grabbing the ticket between spawn and now.
+SMITH_EXPECTED_FROM_STATUS="$eligible_status" \
+  bash $CLAUDE_PLUGIN_ROOT/scripts/jira_transition.sh \
+       "$ticket" "$claim_status"
+
+# Add the smith-implementing label (idempotent; no-op if already there)
+bash $CLAUDE_PLUGIN_ROOT/scripts/jira_label_add.sh \
+     "$ticket" smith-implementing
 ```
 
-The log entries become `transitioned` / `labelled` instead of
-`would-transition` / `would-label`. Pre-flight and race-guard stay
-identical.
+If `jira_transition.sh` exits 1 (race detected), return
+`{result: "stuck", reason: "ticket state changed during claim race"}`.
+Any other non-zero exit from the scripts: `{result: "error", reason}`
+— let the lead retry once.
+
+Then write the live log entries:
+```
+<ts> | smith:claim | $ticket | transitioned | from=<eligible> to=<claim>
+<ts> | smith:claim | $ticket | labelled | label=smith-implementing
+<ts> | smith:claim | $ticket | branch-confirmed | $branch
+```
+
+Worktree branch check (step 4 from dry-run) and echo of `$branch`
+(step 5) are identical.
 
 ## On stuck / error outcomes
 

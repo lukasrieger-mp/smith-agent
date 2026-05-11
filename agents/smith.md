@@ -122,15 +122,21 @@ Before any write to JIRA, git remote, or GitHub:
 
 If any pre-flight fails, return `{result: "stuck", reason: "<pre-flight failure>"}`.
 
-## Phase 1 notes — what you can and can't actually do today
+## Phase notes — what you can actually do today
 
-In Phase 1, the inner-teammate skills (`smith:claim`, `smith:enrich`,
-`smith:pipeline`, `smith:pr`) are placeholder skeletons. They describe
-the workflow but log intended writes instead of performing them. When
-you invoke them, you'll see they're in dry-run-equivalent mode.
+| Inner skill | Phase 1 (placeholder always) | Phase 2 (NOW) | Phase 3+ |
+|---|---|---|---|
+| `smith:claim` | logs intended | **live when dry_run=false**; placeholder when true | (no change) |
+| `smith:enrich` | logs intended | **live brief writing always**; Explore subagent dispatch deferred to 2.x | (no change) |
+| `smith:pipeline` | placeholder | placeholder | live Anderson critic loop in Phase 3 |
+| `smith:pr` | placeholder | placeholder | live PR open in Phase 4 |
 
-In Phase 2, `smith:claim` and `smith:enrich` become live. In Phase 3,
-`smith:pipeline` activates the real Anderson critic loop. In Phase 4,
-`smith:pr` opens real PRs. Until those phases land, treat your work
-as exercise — drive the orchestration end-to-end but don't expect
-external state to change.
+The big consequence: in Phase 2, running `/smith:implement APP-XXXX`
+**without** `--dry-run` will perform real JIRA writes (status transition
++ label add) and create a real worktree on a real `task/*` branch. It
+will NOT push a branch or open a PR (those are still placeholder).
+
+This leaves the ticket in an in-between state: JIRA in `In Progress` with
+`smith-implementing` label, worktree exists, no PR. If the operator
+wants to abandon the run, they must manually transition the ticket back
+and remove the label. Prefer `--dry-run` until Phase 4 closes the loop.

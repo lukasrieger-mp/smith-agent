@@ -134,20 +134,31 @@ Smith implement complete (dry-run=<true|false>)
 
 Then `tail -5 .smith/log.txt` so the operator sees the recent log lines.
 
-## Phase 1 caveats
+## Phase status (today: Phase 2)
 
-In Phase 1, the inner-teammate skills (`smith:claim`, `smith:enrich`,
-`smith:pipeline`, `smith:pr`) are placeholder skeletons that log intended
-writes instead of performing them. Running this command end-to-end will:
+What's live and what's placeholder, by skill:
 
-- Dispatch the team pair correctly.
-- Smith will walk through claim → enrich → pipeline → pr, invoking each
-  inner-teammate skill in order.
-- Anderson will be available for mailbox dialogue but in placeholder
-  mode replies with `{"findings": []}` (no real critique yet).
-- Smith's final outcome JSON reports a faux-success without any real
-  JIRA or GitHub state having changed.
+| Skill | Phase 2 status | Notes |
+|---|---|---|
+| `smith:claim` | **LIVE** (real JIRA transition + label add) when `--dry-run` is NOT passed; placeholder when it is | The `dry_run` flag in the spawn prompt picks the branch |
+| `smith:enrich` | **LIVE** brief writing always (no side effects beyond a file in the worktree); Explore subagent dispatch deferred to Phase 2.x | Brief lands in `<worktree>/.smith/briefs/<key>-brief.md` |
+| `smith:pipeline` | Placeholder — Anderson always replies `{"findings": []}`; gates pass on round 1 | Phase 3 activates the real critic loop |
+| `smith:pr` | Placeholder — logs intended actions, no `git push`, no `gh pr create` | Phase 4 activates real PR opening |
 
-This is intentional — exercise the orchestration without consequence.
-Phase 2 activates `smith:claim` and `smith:enrich`. Phase 3 activates
-the real Anderson critic loop. Phase 4 activates `smith:pr`.
+**Consequence for operators today**: running `/smith:implement APP-XXXX`
+without `--dry-run` WILL:
+
+- Transition the JIRA ticket from the eligible status to the claim status
+- Add the `smith-implementing` label
+- Create a `task/<key>-<slug>` branch in `<target>/.smith/worktrees/<key>/`
+- Write a brief file inside that worktree
+- Walk through pipeline + pr in placeholder mode (Smith's working tree
+  gains a spec + plan + impl commit but the pipeline's critic dialogue
+  is a no-op and the PR is never opened)
+
+To revert: manually transition the ticket back, `acli ... edit
+--remove-labels smith-implementing`, and `git worktree remove
+.smith/worktrees/<key>`.
+
+**Prefer `--dry-run` until Phase 4 closes the loop** (real PR open
+gives you a clean way to land or close out the work).
