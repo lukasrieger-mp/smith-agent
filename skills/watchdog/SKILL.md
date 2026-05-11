@@ -111,6 +111,16 @@ log "stop lifted — resuming new dispatches"
 These are not separate skills — they are the same flow `/smith:implement`
 already documents in its slash command body. The watchdog inlines them.
 
+**Spawn mechanism: agent-teams, not the `Agent` tool.** Smith and
+Anderson must be spawned as long-lived teammates via the agent-teams
+mechanism (natural-language team creation per
+`docs/agent-teams` — see the example phrasing in
+`commands/implement.md`). The plain `Agent` tool produces one-shot
+subagents that exit after their first turn and would strand Smith with
+no Anderson at the first review gate. The agent-teams flag must be
+enabled (the watchdog command's pre-flight verifies this; without it,
+the dispatch will silently degrade).
+
 ### `dispatch_ticket_mode <key>`
 
 1. Run `/smith:implement <key>`'s pre-flight (assert_target_repo,

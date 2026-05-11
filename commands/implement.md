@@ -35,12 +35,18 @@ Examples:
 
 ## Pre-flight (do this first, in order)
 
-1. Verify your CWD is the configured target repo:
+1. Verify agent-teams is enabled. Without it the Smith/Anderson pair
+   spawn degrades silently to one-shot subagents:
+   ```
+   bash $SMITH_PLUGIN_ROOT/scripts/assert_agent_teams_enabled.sh
+   ```
+   If this fails, abort with the script's error message. Do not continue.
+2. Verify your CWD is the configured target repo:
    ```
    bash $SMITH_PLUGIN_ROOT/scripts/assert_target_repo.sh
    ```
    If this fails, abort with the script's error message. Do not continue.
-2. Read the cap and active-Smith count:
+3. Read the cap and active-Smith count:
    ```
    max=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_smiths)
    ```
@@ -48,14 +54,14 @@ Examples:
    for in-progress tasks. If `active >= max`, abort with message:
    "At max parallelism ($active/$max active). Wait for a Smith to finish,
    or shutdown a teammate, then retry."
-3. Verify the ticket via `acli` (skip the full JQL — just confirm the
+4. Verify the ticket via `acli` (skip the full JQL — just confirm the
    ticket exists, is assigned to you, and is in the eligible status):
    ```
    ticket_json=$(acli jira workitem view "$1" --fields "summary,status,assignee,components,labels" --json)
    ```
    If status is not the configured eligible status (default `Ready for
    Development`) or assignee is not currentUser, abort with the reason.
-4. Classify platform. We merge **components AND labels** because some
+5. Classify platform. We merge **components AND labels** because some
    teams put the platform marker in labels rather than components:
    ```
    markers=$(echo "$ticket_json" | jq -c '
@@ -113,10 +119,28 @@ git branch -D task/<ticket-lowercased>-<slug>   # local-only; never pushed in dr
 
 ## Spawn the teammate pair
 
-Use the agent-team spawn mechanism. The spawn-prompt structure is
-shown below in full — don't go fetch the spec for this; everything
-needed is right here. Spawn two teammates with deterministic names so
-the operator can reference them later.
+**Do NOT use the `Agent` tool here.** That spawns one-shot subagents
+that finish their first turn and exit — Anderson would die before the
+spec gate. This pair must be spawned via the **agent-teams** mechanism,
+which produces long-lived teammates that persist across mailbox
+round-trips and trigger the `TeammateIdle` hook.
+
+The agent-teams spawn is initiated by natural language. Phrase your
+request to create a team with two teammates. Example phrasing:
+
+> Create an agent team with two teammates for ticket APP-XXXX:
+>
+> - First teammate uses agent type `smith`, named `smith-APP-XXXX`,
+>   with the spawn prompt below.
+> - Second teammate uses agent type `anderson`, named
+>   `anderson-APP-XXXX`, with the spawn prompt below.
+>
+> Both must persist for the lifetime of this ticket. Do not shut them
+> down on idle.
+
+The spawn-prompt structure is shown below in full — don't go fetch the
+spec for this; everything needed is right here. Spawn two teammates
+with deterministic names so the operator can reference them later.
 
 **Both must be spawned.** Smith requires a paired Anderson to do
 adversarial review at every gate; without Anderson, Smith aborts the
@@ -125,6 +149,11 @@ Spawning only Smith is not a valid dispatch — it just burns a Smith
 slot to no effect. The two names must match exactly between Smith's
 spawn prompt ("Your Anderson is: ...") and Anderson's actual spawn
 name; a mismatched name is the same as a missing Anderson.
+
+**If you find yourself using the `Agent` tool**, stop and re-read this
+section. The `Agent` tool is always available regardless of whether
+agent-teams is enabled; you can reach for it by reflex. That is the
+failure mode this paragraph exists to prevent.
 
 **Teammate 1 — Mr. Smith**, agent type `smith`, name `smith-<ticket>`:
 

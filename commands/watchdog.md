@@ -66,17 +66,22 @@ script via the `.smith/state/watchdog-mode` sentinel file.)
 
 ## Pre-flight
 
-1. Verify CWD is the configured target repo:
+1. Verify agent-teams is enabled (Smith and Anderson must spawn as
+   real teammates, not one-shot subagents):
+   ```
+   bash $SMITH_PLUGIN_ROOT/scripts/assert_agent_teams_enabled.sh
+   ```
+2. Verify CWD is the configured target repo:
    ```
    bash $SMITH_PLUGIN_ROOT/scripts/assert_target_repo.sh
    ```
-2. Initialize the watchdog's per-target state files (idempotent;
+3. Initialize the watchdog's per-target state files (idempotent;
    smith_config.sh handles lazy bootstrap and gitignore management):
    ```
    bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh target_repo > /dev/null
    bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh count > /dev/null
    ```
-3. Record the watchdog mode so the skill knows how to react. Without
+4. Record the watchdog mode so the skill knows how to react. Without
    `--pr-only`, write `full`; with it, write `pr-only`:
    ```
    mkdir -p .smith/state
