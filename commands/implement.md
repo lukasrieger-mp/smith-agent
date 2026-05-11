@@ -145,6 +145,10 @@ name; a mismatched name is the same as a missing Anderson.
 > Wait for review requests from smith-<ticket> via mailbox.
 > Per spec Section 8.2, only report findings at confidence >= 80.
 > Reply with the documented JSON schema for each gate (mode=spec, mode=plan, mode=diff).
+> **Stay alive until the lead sends you a shutdown request.** Smith
+> will send multiple review.request messages across the pipeline (one
+> per gate). After replying to one, wait silently for the next — do
+> not self-terminate. An empty inbox is not "done"; it's "waiting".
 
 **Verify both came up** before considering dispatch successful. After
 the two spawn calls, list active teammates and confirm you see both

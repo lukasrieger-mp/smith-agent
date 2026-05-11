@@ -20,6 +20,16 @@
           }
         ]
       }
+    ],
+    "TeammateIdle": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/hook_keep_anderson_alive.sh"
+          }
+        ]
+      }
     ]
   }
 }

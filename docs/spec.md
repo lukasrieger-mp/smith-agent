@@ -1615,6 +1615,9 @@ Spawn an Anderson teammate (using the anderson agent type) named
   Wait for review requests from "smith-APP-1234" via mailbox.
   Per spec Section 8.2, only report findings at confidence ≥ 80.
   Reply with the documented JSON schema.
+  Stay alive until the lead sends a shutdown request — Smith sends one
+  review.request per gate, so an empty inbox between gates is normal.
+  Do not self-terminate.
 ```
 
 For PR-fix mode, the Smith spawn prompt instead includes
