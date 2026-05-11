@@ -43,8 +43,11 @@ Background monitors:
   only when a *new* eligible ticket key appears. *Notifications are
   ignored by the lead when `--pr-only` is active.*
 - `pr-comments` — polls open Smith-authored PRs every 60 sec (active),
-  backing off to 30 min after 10 quiet cycles. Emits
-  `smith.pr.new_comments` when a PR gains new unresolved threads.
+  backing off to 30 min after 30 quiet cycles (≈30 min of active
+  polling). Cadence resets to active on either of: a new unresolved
+  thread arriving, or Smith pushing commits (which kicks the monitor
+  via `pr_comments_reset.sh`). Emits `smith.pr.new_comments` when a
+  PR gains new unresolved threads.
 - `stop-sentinel` — watches `.smith/STOP` every 2 sec; emits
   `smith.stop.requested` or `smith.stop.lifted` on state change.
 

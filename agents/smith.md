@@ -144,7 +144,13 @@ existing remote branch (the PR's head) — you don't re-create it.
    time (mode=diff) for a review of your fix commits. Standard
    mailbox dialogue per Section 8.4.
 4. Push the commits to the existing branch (no force-push). The bash-
-   guard hook blocks `--force` and `--force-with-lease`.
+   guard hook blocks `--force` and `--force-with-lease`. Immediately
+   after a successful push, kick the PR-comments monitor so its
+   cadence resets to the active interval — your push may trigger
+   fresh reviewer activity within minutes:
+   ```
+   bash $SMITH_PLUGIN_ROOT/scripts/pr_comments_reset.sh
+   ```
 5. If any threads exceeded the 5-cycle cap, edit the PR to add the
    `needs-human-attention` label via `gh pr edit "$pr_number" --add-label needs-human-attention`.
 6. Send outcome JSON to the lead via mailbox; exit.

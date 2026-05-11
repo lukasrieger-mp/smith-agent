@@ -30,9 +30,12 @@ green. Open a normal draft PR.
    ```
    bash $SMITH_PLUGIN_ROOT/scripts/gh_ensure_labels.sh
    ```
-2. Push the branch:
+2. Push the branch, then kick the PR-comments monitor so its cadence
+   resets — reviewers may start commenting within minutes of the PR
+   appearing:
    ```
    git push -u origin "$branch"
+   bash $SMITH_PLUGIN_ROOT/scripts/pr_comments_reset.sh
    ```
 3. Compose the PR title:
    ```
@@ -101,9 +104,11 @@ human will need.
    `wip(smith): partial work at point of stuck — <ticket>` commit.
    Spec and plan files were already committed per-gate by
    `smith:pipeline`, so they ride along automatically.
-3. Push the branch (still no force):
+3. Push the branch (still no force), then kick the PR-comments monitor
+   so cadence resets:
    ```
    git push -u origin "$branch"
+   bash $SMITH_PLUGIN_ROOT/scripts/pr_comments_reset.sh
    ```
 4. Compose title:
    ```

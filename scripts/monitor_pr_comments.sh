@@ -6,7 +6,15 @@
 # Active interval: 60s (reviewer responsiveness matters more than JIRA).
 # Backoff: after SMITH_PR_POLL_QUIET_CYCLES consecutive cycles with no new
 # comments, the interval steps up to SMITH_PR_POLL_BACKOFF_INTERVAL (default
-# 30 min). Any new comment snaps the cadence back to the active interval.
+# 30 min). Default cycle threshold is 30 — so we poll every 60s for at
+# least 30 minutes before stepping up.
+#
+# Cadence resets to the active interval on two signals:
+#   1. A new unresolved review thread shows up (the natural case).
+#   2. `.smith/state/pr-comments/kick` exists — Smith creates this file
+#      via `pr_comments_reset.sh` after every git push. A push can
+#      trigger fresh reviewer activity within minutes; we don't want
+#      to be at the 30-min backoff during that response window.
 #
 # Notification schema:
 #   {"type":"smith.pr.new_comments","pr":4321,"new_count":2,"branch":"task/app-1234-foo"}
@@ -19,9 +27,10 @@
 set -uo pipefail
 ACTIVE_INTERVAL="${SMITH_PR_POLL_INTERVAL:-60}"
 BACKOFF_INTERVAL="${SMITH_PR_POLL_BACKOFF_INTERVAL:-1800}"
-QUIET_CYCLE_THRESHOLD="${SMITH_PR_POLL_QUIET_CYCLES:-10}"
+QUIET_CYCLE_THRESHOLD="${SMITH_PR_POLL_QUIET_CYCLES:-30}"
 MAX_CYCLES="${SMITH_MONITOR_MAX_CYCLES:-0}"   # 0 = unbounded; test hook
 STATE_DIR=".smith/state/pr-comments"
+KICK_FILE="$STATE_DIR/kick"
 ONESHOT="${SMITH_MONITOR_ONESHOT:-0}"
 NOTIFY_COUNT=0   # set by emit_diff_for_each_pr each cycle
 
@@ -107,6 +116,16 @@ while true; do
     cycle=$((cycle + 1))
     if (( MAX_CYCLES > 0 && cycle >= MAX_CYCLES )); then break; fi
     continue
+  fi
+
+  # Consume any pending kick signal (from a Smith push). Resetting
+  # quiet_cycles to 0 and dropping back to the active interval ensures
+  # we catch reviewer responses quickly. Remove the kick file so we
+  # only honour it once.
+  if [[ -f "$KICK_FILE" ]]; then
+    rm -f "$KICK_FILE"
+    quiet_cycles=0
+    interval="$ACTIVE_INTERVAL"
   fi
 
   emit_diff_for_each_pr
