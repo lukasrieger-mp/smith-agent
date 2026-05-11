@@ -1,11 +1,11 @@
 ---
-name: smith-pr
+name: pr
 description: Open the draft PR for a Smith-implemented ticket. Two paths: success (clean PR title and body) and WIP-stuck (escalation PR with needs-human-attention label, JIRA label swap, promoted spec/plan/brief). Always opens DRAFT — never marks ready-for-review, never merges.
 ---
 
 # Smith PR
 
-See `smith/docs/spec.md` Section 11.5 for the full contract.
+See `docs/spec.md` Section 11.5 for the full contract.
 
 ## Inputs
 

@@ -1,11 +1,11 @@
 ---
-name: smith-pr-watch
+name: pr-watch
 description: Fan-out poller for all open Smith-authored draft PRs. Per-PR: ensure worktree exists, fetch unresolved comments, address them via pr-feedback-helper, commit and push. Tracks per-thread fix cycles; tags needs-human-attention after 5 cycles on the same thread.
 ---
 
 # Smith PR Watch
 
-See `smith/docs/spec.md` Section 11.6 for the full contract.
+See `docs/spec.md` Section 11.6 for the full contract.
 
 ## Inputs
 

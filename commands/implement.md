@@ -2,7 +2,7 @@
 description: Run the full Smith pipeline against a specific JIRA ticket. Use --dry-run to walk the pipeline without any external side effects.
 ---
 
-# /smith-implement
+# /smith:implement
 
 Args:
 - `$1` (required): JIRA ticket key, e.g. `APP-5601`
@@ -11,8 +11,8 @@ Args:
 ## Usage
 
 ```
-/smith-implement APP-5601
-/smith-implement APP-5601 --dry-run
+/smith:implement APP-5601
+/smith:implement APP-5601 --dry-run
 ```
 
 ## Workflow
@@ -24,11 +24,11 @@ subsequent skill invocations and (in Phase 1) set
 Then drive the pipeline by invoking these skills **in order** via the Skill
 tool, passing `$TICKET` and `$SMITH_DRY_RUN` through:
 
-1. `smith-claim` — produces a branch name (or aborts if pre-flight fails).
-2. `smith-enrich` — produces an enriched brief path.
-3. `smith-pipeline` — produces a pipeline-outcome JSON
+1. `smith:claim` — produces a branch name (or aborts if pre-flight fails).
+2. `smith:enrich` — produces an enriched brief path.
+3. `smith:pipeline` — produces a pipeline-outcome JSON
    (`{"result": "success"|"stuck", "reason": "..."}`).
-4. `smith-pr` — produces a (dry-run) PR URL.
+4. `smith:pr` — produces a (dry-run) PR URL.
 
 At each step, if the skill exits non-zero, halt and report which step failed.
 

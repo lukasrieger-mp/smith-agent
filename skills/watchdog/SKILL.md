@@ -1,6 +1,6 @@
 ---
-name: smith-watchdog
-description: One watchdog tick. Scans JIRA for eligible candidate tickets (assigned, "Ready for Development", SP ≤ 2, no opt-out labels), checks open Smith PRs for unresolved comments, and dispatches at most one action (smith-claim, smith-pr-watch, or no-op). Use when /smith-watchdog command runs or when the loop skill fires.
+name: watchdog
+description: One watchdog tick. Scans JIRA for eligible candidate tickets (assigned, "Ready for Development", SP ≤ 2, no opt-out labels), checks open Smith PRs for unresolved comments, and dispatches at most one action (smith-claim, smith-pr-watch, or no-op). Use when /smith:watchdog command runs or when the loop skill fires.
 ---
 
 # Smith Watchdog (Tick)
@@ -8,13 +8,13 @@ description: One watchdog tick. Scans JIRA for eligible candidate tickets (assig
 Phase 1 stub. Real JIRA polling and PR-watch dispatch are wired in later
 phases. This skill currently:
 
-1. Asserts working directory via `smith/scripts/assert_agent_repo.sh`.
-2. Runs `smith/scripts/jira_scan.sh` (stub mode in Phase 1 via
+1. Asserts working directory via `scripts/assert_target_repo.sh`.
+2. Runs `scripts/jira_scan.sh` (stub mode in Phase 1 via
    `SMITH_DRY_RUN_FIXTURE`).
 3. Logs the candidate count to `.smith/log.txt`.
 4. Returns the JSON candidate list to the caller.
 
-See `smith/docs/spec.md` Section 5.3 (per-tick decision tree) and Section 6
+See `docs/spec.md` Section 5.3 (per-tick decision tree) and Section 6
 (JIRA integration) for the full contract this skill must satisfy in later
 phases.
 
@@ -31,8 +31,8 @@ None directly. Reads:
 
 ## Phase 1 workflow
 
-1. `bash smith/scripts/assert_agent_repo.sh` — abort if not in agent repo.
-2. `bash smith/scripts/jira_scan.sh` — capture JSON output.
+1. `bash scripts/assert_target_repo.sh` — abort if not in agent repo.
+2. `bash scripts/jira_scan.sh` — capture JSON output.
 3. Log: `$(date -u +%FT%TZ) | smith-watchdog | - | scan | candidates=<N>`.
 4. Print the candidate JSON.
 

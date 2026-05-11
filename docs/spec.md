@@ -29,15 +29,16 @@ escalates a stuck ticket via the WIP-stuck path.
 ### 1.1 Operating boundary
 
 Smith operates inside one and only one filesystem location at runtime: the
-**target repo** that `install.sh` has been pointed at. The path is recorded
-as `target_repo` in the target's `.smith/config.json` and is configurable
-per install. By default Smith runs against `~/myposter-agent-repo`; any other
-git repo could be a target.
+**target repo** that the operator launched `claude --plugin-dir
+~/StudioProjects/smith-agent` from. That cwd becomes Smith's working
+directory; the per-target runtime state lives in `<target>/.smith/`, and
+the `target_repo` field of `.smith/config.json` records the canonical path
+for the working-directory guard (Section 7.4) to validate.
 
 All Smith teammates work inside the target's filesystem. The plugin source
-(this `smith-agent` repo) is **not** part of Smith's runtime scope — Smith
-reads its skill, agent, and command definitions via symlinks the target's
-`.claude/` directory holds, but never edits its own source.
+(this `smith-agent` repo) is **not** part of Smith's runtime scope — it's
+the source Claude Code loads when started with `--plugin-dir`, but Smith
+itself never edits its own source files.
 
 The only paths outside the target repo that Smith is *permitted* to read are
 dependency caches required for code understanding:
@@ -98,15 +99,15 @@ Section 13.
 |---|---|
 | The implementing agent | **Smith** |
 | The adversarial critic persona | **Mr. Anderson** |
-| Slash command — start the watchdog session | `/smith-watchdog` |
-| Slash command — manual ticket override | `/smith-implement APP-XXXX` |
+| Slash command — start the watchdog session | `/smith:watchdog` |
+| Slash command — manual ticket override | `/smith:implement APP-XXXX` |
 
 ## 4. Glossary
 
 - **Candidate ticket**: a JIRA ticket matching the JQL filter (Section 6.1) —
   assigned to the operator, status `Ready for Development`, SP ≤ 2, not
   excluded by labels.
-- **Pipeline**: the SPEC → PLAN → IMPL sequence driven by `smith-pipeline`.
+- **Pipeline**: the SPEC → PLAN → IMPL sequence driven by `smith:pipeline`.
 - **Gate**: a critic checkpoint between two pipeline stages.
 - **WIP-stuck path**: the escalation flow when Smith cannot finish — always
   yields a draft PR labelled `needs-human-attention` and JIRA label swap
@@ -136,9 +137,9 @@ team-mechanics reference). The runtime topology has three roles:
 
 ```
                 ┌─────────────────────────────────────────────────┐
- /smith-       ─►│  WATCHDOG SESSION (team lead, long-lived)      │◄── /loop 30m
+ /smith:       ─►│  WATCHDOG SESSION (team lead, long-lived)      │◄── /loop 30m
  watchdog       │                                                 │
- /smith-       ─►│  Per tick:                                     │
+ /smith:       ─►│  Per tick:                                     │
  implement      │   (1) fan-out PR-fix teammates within cap       │
                 │       (one per open PR with unresolved comments)│
                 │   (2) if room remains, dispatch ONE new         │
@@ -214,7 +215,7 @@ tick:
 
 The "at most one new impl per tick" rule preserves a deliberate operator
 intervention window: the operator can manually dispatch a second ticket via
-`/smith-implement APP-XXXX` within the 30-minute gap between cycles. If the
+`/smith:implement APP-XXXX` within the 30-minute gap between cycles. If the
 watchdog greedily grabbed both slots immediately, that window would close.
 
 PR-fix fan-out is more permissive (within the cap) because incoming reviewer
@@ -227,13 +228,13 @@ comments deserve a responsive turnaround.
   sources.
 - **Lead is fixed.** The session that creates the team is the lead for its
   lifetime (Claude Code limitation). If the lead session dies, the operator
-  manually restarts via `/smith-watchdog`.
+  manually restarts via `/smith:watchdog`.
 - **No nested teams.** Teammates cannot spawn their own teams. Anderson is a
   teammate, not a subagent; Smith dispatches sub-Tasks (Explore, classifier
   helpers) but not full teams.
 - **Drafts only.** Smith never marks ready-for-review and never merges.
 - **Cap is hard.** The lead never spawns a Smith if the cap is already at 2.
-  Manual `/smith-implement` invocations also respect the cap and fail fast
+  Manual `/smith:implement` invocations also respect the cap and fail fast
   if full.
 
 ### 5.5 Hard limits
@@ -245,7 +246,7 @@ converging.
 
 | Limit | Value | Scope | Action on breach |
 |---|---|---|---|
-| Concurrent Smith teammates | 2 | Sum of ticket-impl + PR-fix Smiths across the whole team | Lead does not spawn additional Smiths; manual `/smith-implement` fails fast |
+| Concurrent Smith teammates | 2 | Sum of ticket-impl + PR-fix Smiths across the whole team | Lead does not spawn additional Smiths; manual `/smith:implement` fails fast |
 | New impl pickup per tick | 1 | Lead's per-tick rule (Section 5.3) | Lead defers additional candidates to next tick |
 | Critic rounds per gate | 3 | Each gate (spec, plan, diff) independently — measured in mailbox round-trips with Anderson | Escalate → WIP-stuck |
 | Total critic rounds per ticket | 9 implicit | 3 gates × 3 rounds | (derived from above) |
@@ -301,7 +302,7 @@ tiebreaker after platform preference and `created ASC`.
 The only transition Smith performs:
 - `Ready for Development` → `In Progress` (on claim)
 
-If the transition fails (e.g. status changed concurrently), `smith-claim`
+If the transition fails (e.g. status changed concurrently), `smith:claim`
 aborts cleanly, returns to the watchdog, and the candidate is skipped this tick
 (re-queried next tick).
 
@@ -312,8 +313,8 @@ required.
 
 | Label | Owner | Meaning |
 |---|---|---|
-| `smith-implementing` | smith-claim adds; smith-pr removes on PR open (success or WIP-stuck) | Currently being worked on by Smith |
-| `auto-impl-failed` | smith-pr adds on WIP-stuck path | Smith gave up; needs human |
+| `smith-implementing` | `smith:claim` adds; `smith:pr` removes on PR open (success or WIP-stuck) | Currently being worked on by Smith |
+| `auto-impl-failed` | `smith:pr` adds on WIP-stuck path | Smith gave up; needs human |
 | `no-auto-impl` | Operator adds manually | Opt-out: Smith never claims this ticket |
 
 ### 6.6 Comments
@@ -324,14 +325,14 @@ cover routine notifications, so adding comments would create noise rather than
 signal. All "where Smith got stuck" detail lives in the PR body on the
 WIP-stuck path (Section 10.3), not in JIRA.
 
-This is a strict rule: `smith-claim`, `smith-pr`, and `smith-pr-watch` must not
+This is a strict rule: `smith:claim`, `smith:pr`, and `smith:pr-watch` must not
 call `acli jira workitem comment` for routine state changes. The only label
 operations they perform are documented in 6.5; status transitions are limited
 to the one in 6.4.
 
 ### 6.7 Platform classification
 
-Two-step decision in `smith-watchdog`:
+Two-step decision in `smith:watchdog`:
 
 1. Read the ticket's `components` field. If components are:
    - `{iOS}` exactly → reject, never touch
@@ -357,11 +358,11 @@ lowercased, ASCII, hyphen-separated, capped at 40 chars. Encoded in
 
 ### 7.2 Branch lifecycle
 
-- `smith-claim` creates `task/<key>-<slug>` from `origin/develop` (after
+- `smith:claim` creates `task/<key>-<slug>` from `origin/develop` (after
   `git fetch origin develop`).
-- On success: `smith-pr` pushes branch + opens draft PR.
-- On WIP-stuck: `smith-pr` still pushes branch + opens *WIP* draft PR.
-- After draft PR is open: `smith-pr-watch` only adds commits; no rebase, no
+- On success: `smith:pr` pushes branch + opens draft PR.
+- On WIP-stuck: `smith:pr` still pushes branch + opens *WIP* draft PR.
+- After draft PR is open: `smith:pr-watch` only adds commits; no rebase, no
   force-push.
 - If `develop` has drifted by ≥ N commits since branch creation, one rebase
   attempt is allowed. On conflict → escalate to WIP-stuck.
@@ -390,13 +391,15 @@ lead never edits source files; it scans, lists PRs, and dispatches teammates.
 Teammates always operate inside a `.smith/worktrees/` subdirectory of the
 target.
 
-### 7.4 Pre-flight (`smith-claim`)
+### 7.4 Pre-flight (`smith:claim`)
 
 Refuses to proceed if any of these fail:
 
 - **Working-directory guard:** the current location must resolve (via
   `git rev-parse --git-common-dir`) to a target repo that has a
-  `.smith/config.json` — proof that `install.sh` has been run against it.
+  `.smith/config.json` — proof that `scripts/smith_config.sh` has run at
+  least once here (it auto-creates `.smith/config.json` and the .gitignore
+  entry on first invocation).
   The optional `SMITH_TARGET_REPO` env var further pins the expected target.
   Enforced by `scripts/assert_target_repo.sh`. This is the enforcement point
   for the filesystem confinement invariant declared in Section 1.1.
@@ -431,7 +434,7 @@ team mailbox.
 6. **Anderson gate** (mailbox, mode=diff) — review of `git diff <base>...HEAD`.
 7. `verification-before-completion` — final build + format + tests on the
    current build matrix (see Section 9.1).
-8. Smith opens the draft PR via `smith-pr` skill (Section 11.5).
+8. Smith opens the draft PR via `smith:pr` skill (Section 11.5).
 9. Smith returns an outcome JSON to the lead via the team mailbox (Section 8.5
    for schema). The Anderson teammate shuts down when Smith does (or when the
    lead requests cleanup, whichever first).
@@ -625,7 +628,7 @@ Mediated by `scripts/run-silent.sh` per the agent repo's `CLAUDE.md`. Strictly:
 
 All under `docs/superpowers/`:
 
-- `specs/.smith/<ticket>-brief.md` — enrichment output from `smith-enrich`
+- `specs/.smith/<ticket>-brief.md` — enrichment output from `smith:enrich`
 - `specs/.smith/<date>-<ticket>-design.md` — Smith's spec
 - `plans/.smith/<date>-<ticket>.md` — Smith's plan
 
@@ -635,7 +638,7 @@ is belt-and-braces in case `docs/` is added to git later.
 
 ### 10.2 Promoted to committed locations on WIP-stuck
 
-When `smith-pr` enters the WIP-stuck path, it moves:
+When `smith:pr` enters the WIP-stuck path, it moves:
 
 - `specs/.smith/<ticket>-brief.md` → `specs/<date>-<ticket>-brief.md`
 - `specs/.smith/<date>-<ticket>-design.md` → `specs/<date>-<ticket>-design.md`
@@ -688,7 +691,7 @@ All local Smith state lives under a single repo-root `.smith/` directory:
 {
   "ticket": "APP-1234",
   "branch": "task/app-1234-foo",
-  "worktree": ".git/smith-worktrees/app-1234",
+  "worktree": ".smith/worktrees/app-1234",
   "fix_cycles_per_thread": { "PRRT_kwDOABC...": 2 },
   "last_polled": "2026-05-11T10:33:00Z"
 }
@@ -731,7 +734,7 @@ Components partition by **execution context**: which session(s) load them.
 
 ### 11.1 Outer-session skills (load in the watchdog session = team lead)
 
-#### 11.1.1 `smith-watchdog` (the tick)
+#### 11.1.1 `smith:watchdog` (the tick)
 
 - **Input:** none. Reads JIRA via `acli` and open PRs via `gh pr list
   --label smith-authored`. Reads the team task list for active-teammate count.
@@ -740,7 +743,7 @@ Components partition by **execution context**: which session(s) load them.
   API. Writes a one-line entry to `.smith/log.txt` per dispatched action or
   no-op.
 
-#### 11.1.2 `smith-pr-watch` (PR-fix fan-out)
+#### 11.1.2 `smith:pr-watch` (PR-fix fan-out)
 
 - **Input:** none. Discovers open Smith-authored PRs.
 - **Output:** spawns one teammate pair per open PR with unresolved comments
@@ -750,12 +753,12 @@ Components partition by **execution context**: which session(s) load them.
   against the 2-cap before each spawn.
 
 These two outer-session skills are invoked by the lead each tick (via the
-`/loop` skill driving `/smith-watchdog`). They do not edit code; they
+`/loop` skill driving `/smith:watchdog`). They do not edit code; they
 schedule.
 
 ### 11.2 Inner-teammate skills (load inside Smith teammate's context)
 
-#### 11.2.1 `smith-claim`
+#### 11.2.1 `smith:claim`
 
 - **Loaded by:** ticket-mode Smith teammate only.
 - **Input:** ticket ID (from spawn prompt).
@@ -766,7 +769,7 @@ schedule.
 - **Aborts on:** failing pre-flight (Section 7.4); status race; classifier
   reports iOS-only.
 
-#### 11.2.2 `smith-enrich`
+#### 11.2.2 `smith:enrich`
 
 - **Loaded by:** ticket-mode Smith teammate only.
 - **Input:** ticket ID.
@@ -774,7 +777,7 @@ schedule.
 - **Side effects:** Smith dispatches an `Explore` subagent (via Task) for the
   affected-files map; writes the brief file in his worktree.
 
-#### 11.2.3 `smith-pipeline`
+#### 11.2.3 `smith:pipeline`
 
 - **Loaded by:** ticket-mode Smith teammate only.
 - **Input:** brief file path.
@@ -786,7 +789,7 @@ schedule.
   `subagent-driven-development`, `test-driven-development`,
   `verification-before-completion`.
 
-#### 11.2.4 `smith-pr`
+#### 11.2.4 `smith:pr`
 
 - **Loaded by:** ticket-mode Smith teammate only.
 - **Input:** ticket ID, branch, outcome `{success | stuck-reason}`.
@@ -797,7 +800,7 @@ schedule.
   to committed locations, adds `needs-human-attention` PR label, adds
   `auto-impl-failed` JIRA label. **No JIRA comments on either path.**
 
-#### 11.2.5 `smith-pr-fix` (consumed inside PR-fix-mode Smith)
+#### 11.2.5 `smith:pr-fix` (consumed inside PR-fix-mode Smith)
 
 - **Loaded by:** PR-fix-mode Smith teammate only.
 - **Input:** PR number, branch, unresolved comments JSON (from spawn prompt).
@@ -834,7 +837,7 @@ Used by both the lead and teammates. Pure bash functions, no LLM involvement.
 - GitHub releases, tag pushes, operations on `develop` / `main`
 - Touching the iOS keystore or any `*.jks` / signing config
 
-### 12.2 Pre-flight (`smith-claim`)
+### 12.2 Pre-flight (`smith:claim`)
 
 See Section 7.4.
 
@@ -842,7 +845,7 @@ See Section 7.4.
 
 - Component classification rejects pure-iOS tickets (Section 6.7)
 - Post-enrichment 50% threshold on `ios-app/` files (Section 6.7)
-- `smith-pr` refuses to open a *non-WIP* PR if the diff is iOS-only
+- `smith:pr` refuses to open a *non-WIP* PR if the diff is iOS-only
 
 ### 12.4 Anti-runaway
 
@@ -869,7 +872,7 @@ same issue Smith can't address; rebase cap catches merge-conflict spirals.
 ### 12.5 Crash recovery
 
 - Watchdog restart re-derives state from JIRA + git + GitHub
-- Branch + `smith-implementing` label + no PR → resume `smith-pipeline`
+- Branch + `smith-implementing` label + no PR → resume `smith:pipeline`
 - Detached worktree → leave alone; log warning; continue other lanes
 
 ## 13. Security model
@@ -1088,9 +1091,9 @@ functions over JSON / filesystem input. Tested via:
 
 Both entry commands accept `--dry-run`:
 
-- `/smith-watchdog --dry-run` — full discovery + classification, no JIRA
+- `/smith:watchdog --dry-run` — full discovery + classification, no JIRA
   edits, no branch creation, prints what it *would* dispatch
-- `/smith-implement APP-XXXX --dry-run` — full pipeline, but no JIRA
+- `/smith:implement APP-XXXX --dry-run` — full pipeline, but no JIRA
   transitions, no `gh pr create`, no `git push`; Anderson runs normally; final
   state is a local branch with all commits
 
@@ -1101,10 +1104,10 @@ would-be PR body) before any real run.
 ### 14.3 First real-run protocol
 
 1. Pick one specific known-easy ticket (e.g. a string-resource tweak)
-2. Run `/smith-implement <ticket> --dry-run`
+2. Run `/smith:implement <ticket> --dry-run`
 3. Manually inspect all artifacts
 4. If satisfied, run the same ticket without `--dry-run`
-5. After a successful real run, enable `/smith-watchdog`
+5. After a successful real run, enable `/smith:watchdog`
 
 ### 14.4 What is *not* tested
 
@@ -1115,45 +1118,45 @@ failure pattern, not from deterministic tests.
 ## 15. Open questions / deferred decisions
 
 - **Polling cadence:** default to 30 min on the `loop` skill. Operator may
-  tune via `/loop <interval> /smith-watchdog`.
+  tune via `/loop <interval> /smith:watchdog`.
 - **First-run candidate:** to be picked manually for the dry-run validation
   step (Section 14.3).
 - **PR template:** if `myposter-app` has a `.github/pull_request_template.md`,
-  Smith's `smith-pr` should respect it. Check at implementation time.
+  Smith's `smith:pr` should respect it. Check at implementation time.
 
 ## 16. Decomposition for implementation
 
 This spec is a single coherent design, but the implementation plan should
 decompose into phases that can be built and verified independently:
 
-1. **Phase 1 — Skeleton + dry-run end-to-end.** Plugin scaffold, pure scripts
-   (`make_branch_name`, `classify_platform`, `assert_*`, `smith_config`,
-   `jira_scan` stub), Anderson + Smith agent definitions (placeholder
-   review behaviour), six SKILL.md skeletons, two slash commands, install.sh
-   symlinker. Goal: prove the file structure is correct, scripts pass tests,
-   and Claude Code discovers the plugin items via symlinks.
-   (Phase 1 is partly complete on branch `smith/phase-1-skeleton`. The
-   agent-teams pivot triggered a redesign of skeletons and commands; see the
-   plan at `smith/docs/plans/2026-05-11-phase-1-skeleton.md` for status.)
-2. **Phase 1.5 — Extraction.** Move `smith/` into a dedicated git
-   repository. Rename `agent_repo` → `target_repo` in `.smith/config.json`
-   and update consumers. Generalize `install.sh` to take a target-repo path
-   argument; have it also manage the target's `.gitignore` for `.smith/`.
-3. **Phase 2 — Live `smith-claim` + `smith-enrich`.** Real JIRA writes via
+1. **Phase 1 — Skeleton + plugin-load end-to-end.** Plugin scaffold, pure
+   scripts (`make_branch_name`, `classify_platform`, `assert_*`,
+   `smith_config` with lazy gitignore management, `jira_scan` stub),
+   Anderson + Smith agent definitions (placeholder review behaviour), six
+   SKILL.md skeletons, two slash commands. Goal: prove the file structure
+   is correct, scripts pass tests, and Claude Code discovers the plugin
+   items when loaded via `claude --plugin-dir`. Phase 1 is partly complete
+   on this repo's `main` branch; see
+   [`docs/plans/2026-05-11-phase-1-skeleton.md`](plans/2026-05-11-phase-1-skeleton.md)
+   for status.
+2. **Phase 1.5 — Full SKILL rewrite.** The agent-teams pivot triggered a
+   rewrite of the SKILL.md skeletons and slash commands. Phase 1.5 finishes
+   those rewrites with the agent-team model in mind.
+3. **Phase 2 — Live `smith:claim` + `smith:enrich`.** Real JIRA writes via
    `acli`, real status transitions, real branch creation. Enrichment uses
    `Explore` subagent. Validate against one real ticket.
-4. **Phase 3 — Live `smith-pipeline` with collaborative critic loop.**
+4. **Phase 3 — Live `smith:pipeline` with collaborative critic loop.**
    Wire up brainstorming, writing-plans, subagent-driven-development.
    Activate real Anderson critique via mailbox dialogue (Section 8.4). Test
    one real ticket end-to-end through to a draft PR.
-5. **Phase 4 — Live `smith-pr` + WIP-stuck path.** Both success and stuck
+5. **Phase 4 — Live `smith:pr` + WIP-stuck path.** Both success and stuck
    PR creation, artifact promotion on stuck, JIRA label management.
-6. **Phase 5 — PR-fix mode (Smith dispatch mode #2) + `smith-pr-watch`.**
+6. **Phase 5 — PR-fix mode (Smith dispatch mode #2) + `smith:pr-watch`.**
    Per-PR worktrees, comment polling, fix-cycle counter, fan-out under the
    2-cap.
-7. **Phase 6 — `smith-watchdog` + `/loop` integration + 2-Smith
+7. **Phase 6 — `smith:watchdog` + `/loop` integration + 2-Smith
    concurrency.** Lead's per-tick decision tree (Section 5.3). Manual
-   `/smith-implement` override path. First real autonomous run.
+   `/smith:implement` override path. First real autonomous run.
 
 Each phase is an implementation plan unto itself; one plan file per phase
 under `smith/docs/plans/YYYY-MM-DD-<phase>.md`. Phase 1 plan is already
@@ -1161,133 +1164,124 @@ written.
 
 ## 17. Source layout and packaging
 
-Smith is packaged as a **standalone Claude Code plugin** in its own git
-repository at `~/StudioProjects/smith-agent/`. It follows the canonical
-Claude Code plugin layout so it can later be published to a plugin
-marketplace without restructuring.
+Smith is a **standalone Claude Code plugin** in its own git repository at
+`~/StudioProjects/smith-agent/`. It follows the canonical plugin layout
+defined in the [Claude Code plugins doc](https://code.claude.com/docs/en/plugins).
+At runtime, Smith is loaded via Claude Code's documented development flag
+`--plugin-dir`, with no symlinks, no install script, and no target-repo
+modifications beyond the runtime state directory.
 
-### 17.1 Two-repo topology
+### 17.1 Directory layout
 
 ```
-~/StudioProjects/smith-agent/          ← THIS plugin source repo
+~/StudioProjects/smith-agent/
   .claude-plugin/
-    plugin.json                        ← { name, description, author }
+    plugin.json                  { name: "smith", version: "0.1.0", description, author }
   agents/
-    anderson.md
-    smith.md
+    anderson.md                  Mr. Anderson — adversarial reviewer teammate
+    smith.md                     Mr. Smith — implementer teammate (added in Phase 1.5)
   commands/
-    smith-watchdog.md
-    smith-implement.md
+    implement.md                 → /smith:implement
+    watchdog.md                  → /smith:watchdog
   skills/
-    smith-watchdog/SKILL.md
-    smith-claim/SKILL.md
-    smith-enrich/SKILL.md
-    smith-pipeline/SKILL.md
-    smith-pr/SKILL.md
-    smith-pr-watch/SKILL.md
-  scripts/                             ← shared helpers (Section 11.3)
-    jira_scan.sh
-    classify_platform.sh
+    watchdog/SKILL.md            → /smith:watchdog  (outer-session tick)
+    claim/SKILL.md               → /smith:claim     (inner-teammate)
+    enrich/SKILL.md              → /smith:enrich    (inner-teammate)
+    pipeline/SKILL.md            → /smith:pipeline  (inner-teammate)
+    pr/SKILL.md                  → /smith:pr        (inner-teammate)
+    pr-watch/SKILL.md            → /smith:pr-watch  (outer-session fan-out)
+  scripts/                       Shared bash helpers (Section 11.3)
     make_branch_name.sh
+    classify_platform.sh
     assert_clean_worktree.sh
     assert_target_repo.sh
     smith_config.sh
+    jira_scan.sh
     promote_smith_artifacts.sh
   test/
     lib/assert.sh
-    fixtures/                          ← JSON fixtures for script tests
-    <script>.test.sh                   ← per-script tests
+    fixtures/                    JSON fixtures for script tests
+    <script>.test.sh             Per-script tests
   docs/
-    spec.md                            ← this document
+    spec.md                      This document
     plans/
       2026-05-11-phase-1-skeleton.md
       … (one per phase as they are written)
-  install.sh                           ← takes <target-repo-path> arg
   README.md
-  .gitignore                           ← (this repo's own)
-
-~/myposter-agent-repo/                 ← THE TARGET repo Smith operates on
-  android-app/, ios-app/, shared/, …   ← (unchanged — the real codebase)
-  .claude/                             ← created by install.sh
-    agents/
-      anderson.md         → /Users/.../smith-agent/agents/anderson.md
-      smith.md            → /Users/.../smith-agent/agents/smith.md
-    commands/
-      smith-implement.md  → /Users/.../smith-agent/commands/smith-implement.md
-      smith-watchdog.md   → /Users/.../smith-agent/commands/smith-watchdog.md
-    skills/
-      smith-watchdog/     → /Users/.../smith-agent/skills/smith-watchdog/
-      smith-claim/        → /Users/.../smith-agent/skills/smith-claim/
-      …
-  .smith/                              ← runtime state (gitignored,
-                                          managed by install.sh + smith_config.sh)
-    config.json                        ← target_repo, polling_minutes, …
-    log.txt
-    state/pr-<n>.json
-    worktrees/<ticket>/
-  .gitignore                           ← `.smith/` line added by install.sh
+  .gitignore                     This repo's own
 ```
 
-The smith-agent repo holds *every* file Smith owns. The target repo
-contributes only the symlinks (in `.claude/`), a `.gitignore` entry, and the
-runtime state (in `.smith/`).
+The plugin's `name` is `smith`, which means every skill and command is
+namespaced as `smith:<folder-name>` at invocation time. Hence skill folder
+names drop the redundant `smith-` prefix.
 
-### 17.2 Why this shape
+### 17.2 Runtime: loading the plugin
 
-- **Plugin-ready.** The smith-agent repo already matches the canonical
-  Claude Code plugin layout (`.claude-plugin/plugin.json` + sibling
-  `agents/`/`commands/`/`skills/`). Publishing to a marketplace later is
-  a smaller hop than restructuring.
-- **Decoupled from the target.** Smith can be installed into *any* target
-  repo via `install.sh <target-path>`. The target's location is not
-  hardcoded; only `.smith/config.json` (per-target) knows which repo this
-  particular install is wired to.
-- **Single source of truth.** The symlinks in the target's `.claude/` point
-  to the plugin source, not copies. Edit a file in `smith-agent/`; every
-  target sees the change immediately. No sync drift.
-- **Shareable.** The smith-agent repo could be pushed to a public GitHub
-  repo and consumed by others who run `install.sh` against their own
-  target.
-
-### 17.3 `install.sh` contract
-
-Idempotent installer that takes the target repo's path as its sole argument:
+Smith is **not installed** in the conventional sense. Instead, the operator
+starts a Claude Code session inside the target repo with the `--plugin-dir`
+flag pointing at this plugin source:
 
 ```bash
-./install.sh /path/to/target-repo
+cd /path/to/target-repo
+claude --plugin-dir ~/StudioProjects/smith-agent
 ```
 
-Behaviour:
+The plugin is loaded for that session. All `/smith:<…>` skills, commands,
+and agents are available. `/reload-plugins` picks up edits to the plugin
+source without restarting the session.
 
-- Verifies the target is a git repo and that the given path is its toplevel
-  (not a subdirectory).
-- For every file under `agents/` and `commands/` in the plugin source, creates
-  a symlink at `<target>/.claude/<kind>/<file>` pointing back to the plugin
-  source's file as an **absolute path**. Existing symlinks pointing at the
-  same target are left alone (idempotent); existing non-symlink files cause
-  the script to abort with a clear error.
-- For every directory under `skills/`, creates a directory symlink at
-  `<target>/.claude/skills/<name>`.
-- Idempotently ensures `<target>/.gitignore` contains a `### Smith ###`
-  header followed by `.smith/`. Does not duplicate the entry if it already
-  exists anywhere in the file.
-- Prints a one-screen summary (plugin source, target, symlink counts,
-  gitignore status).
-- Never deletes anything; never modifies the target outside `.claude/` and
-  `.gitignore`.
+A convenient operator alias (in `~/.zshrc`):
 
-### 17.4 Path conventions in the rest of this spec
+```bash
+alias claude-smith='claude --plugin-dir ~/StudioProjects/smith-agent'
+```
 
-Wherever earlier sections referred to skills/agents/commands under
-`.claude/...`, the canonical path is under `smith/...` and the `.claude/...`
-path is the symlink. Both resolve to the same content. When the spec lists
-file paths Smith will *create or modify*, those paths are always under
-`smith/...` (the source of truth).
+Then `cd target-repo && claude-smith` is the operator's day-to-day entry
+point.
+
+### 17.3 Per-target runtime state — lazy bootstrap
+
+The runtime state (config, log, worktrees, PR-fix state) lives in
+`<target>/.smith/` inside whatever target repo Smith is currently operating
+on.
+
+Setup is **lazy**: the first time `scripts/smith_config.sh` runs against a
+target (which happens automatically when any user-facing skill calls it),
+it does two things atomically:
+
+1. Creates `.smith/config.json` with default values (target_repo,
+   polling_minutes, JIRA field IDs, concurrency cap, etc.).
+2. Idempotently appends a `### Smith ###` block with `.smith/` to the
+   target's `.gitignore`, ensuring runtime state is never accidentally
+   committed.
+
+Both steps are skipped on subsequent invocations. No explicit bootstrap
+command exists or is needed — the first `/smith:implement` or
+`/smith:watchdog` invocation initializes the target.
+
+If the operator prefers a host-wide solution, adding `.smith/` to the
+user-global gitignore (`~/.config/git/ignore`) is also fine; `smith_config.sh`
+checks the existing `.gitignore` content and won't add a duplicate entry.
+
+### 17.4 Why this shape
+
+- **Standard plugin install path.** `--plugin-dir` is the documented
+  development install mechanism. No bespoke symlinks; no custom install
+  script.
+- **Namespaced invocations** prevent skill-name conflicts with other
+  plugins the operator may load.
+- **No target-repo pollution.** Loading Smith doesn't modify the target's
+  `.claude/` tree. The only target-side change is `.smith/` (gitignored
+  runtime state, added lazily on first use).
+- **Shareable.** Push this repo to a public marketplace later, or simply
+  share the URL — anyone can `claude --plugin-dir <clone-path>` to run.
+- **Hot reloading.** Edit a skill or agent in the plugin source; run
+  `/reload-plugins` in the active session. No re-install.
 
 ### 17.5 Spec and plan filenames
 
-The spec lives at `smith/docs/spec.md` (single canonical name; history via
-git). Plans are dated under `smith/docs/plans/YYYY-MM-DD-<phase>.md`. The
+The spec lives at `docs/spec.md` (single canonical name; history via git).
+Plans are dated under `docs/plans/YYYY-MM-DD-<phase>.md`. The
 brainstorming-skill default of `docs/superpowers/specs/YYYY-MM-DD-…-design.md`
 is overridden by this convention because Smith's docs are part of Smith's
 shippable source, not the host project's documentation.
@@ -1340,10 +1334,10 @@ with this prompt:
   Mode: ticket
   Ticket: APP-1234
   Worktree: .smith/worktrees/app-1234/
-  Branch (will be created by smith-claim): task/app-1234-<slug>
+  Branch (will be created by `smith:claim`): task/app-1234-<slug>
   Dry-run: false
   Your Anderson is "anderson-APP-1234"; address review requests to him.
-  Execute smith-claim, smith-enrich, smith-pipeline, smith-pr per spec
+  Execute `smith:claim`, `smith:enrich`, `smith:pipeline`, `smith:pr` per spec
   Section 8. Send {type: smith.outcome, ...} to the lead via mailbox when done.
 
 Spawn an Anderson teammate (using the anderson agent type) named
@@ -1386,7 +1380,7 @@ can have team-level failures:
 - **Mailbox delivery fails** (very rare): Smith's `recv()` times out (120s)
   → Smith reports `{result: "error", reason: "anderson timeout"}` →
   lead handles per Section 8.5.
-- **Lead session dies**: operator restarts via `/smith-watchdog`. On restart,
+- **Lead session dies**: operator restarts via `/smith:watchdog`. On restart,
   the new lead has no team and no teammates. The reconciliation logic
   (Section 12.5) finds any orphaned worktrees and either resumes them by
   spawning fresh teammate pairs or marks them WIP-stuck. **Caveat from the

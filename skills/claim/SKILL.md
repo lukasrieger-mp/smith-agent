@@ -1,11 +1,11 @@
 ---
-name: smith-claim
+name: claim
 description: Claim a JIRA ticket for autonomous implementation. Runs pre-flight guards, transitions the ticket to "In Progress", adds the smith-implementing label, and creates a task/<key>-<slug> branch from origin/develop. Use when smith-watchdog dispatches a candidate for implementation.
 ---
 
 # Smith Claim
 
-See `smith/docs/spec.md` Section 11.2 for the full contract.
+See `docs/spec.md` Section 11.2 for the full contract.
 
 ## Inputs
 
@@ -24,8 +24,8 @@ See `smith/docs/spec.md` Section 11.2 for the full contract.
 
 Run before any write:
 
-1. `bash smith/scripts/assert_agent_repo.sh`
-2. `bash smith/scripts/assert_clean_worktree.sh`
+1. `bash scripts/assert_target_repo.sh`
+2. `bash scripts/assert_clean_worktree.sh`
 3. `acli jira auth status` and `gh auth status` both succeed
 4. `git fetch origin develop`
 5. Re-query the ticket via acli; abort if status ≠ "Ready for Development"
@@ -36,7 +36,7 @@ Run before any write:
 All actions in Phase 1 are dry-run only:
 
 1. Resolve ticket summary via `acli jira workitem view $TICKET --fields summary --json`.
-2. Compute branch name via `bash smith/scripts/make_branch_name.sh $TICKET "$SUMMARY"`.
+2. Compute branch name via `bash scripts/make_branch_name.sh $TICKET "$SUMMARY"`.
 3. Append to `.smith/log.txt`:
    `<ts> | smith-claim | $TICKET | dry-run-claim | branch=<name>, would-transition=Ready->InProgress, would-label=smith-implementing`
 4. Print the branch name to stdout.

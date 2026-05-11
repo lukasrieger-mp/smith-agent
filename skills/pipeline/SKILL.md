@@ -1,11 +1,11 @@
 ---
-name: smith-pipeline
+name: pipeline
 description: The full Smith pipeline. Takes an enriched brief and drives SPEC → Anderson → PLAN → Anderson → IMPL (TDD) → Anderson → verify, with bounded iteration at each gate. Commits per gate so partial progress is recoverable.
 ---
 
 # Smith Pipeline
 
-See `smith/docs/spec.md` Section 8 for the full contract.
+See `docs/spec.md` Section 8 for the full contract.
 
 ## Inputs
 

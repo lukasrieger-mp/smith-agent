@@ -24,7 +24,16 @@ assert_eq "$TMP" "$got" "default-target-repo"
 # Config file should now exist
 [[ -f "$TMP/.smith/config.json" ]] || { echo "FAIL: config not written" >&2; exit 1; }
 
-# Override value persists
+# First-time setup also added `.smith/` to the target's .gitignore (lazy bootstrap)
+grep -qxF '### Smith ###' "$TMP/.gitignore" || { echo "FAIL: missing smith marker in gitignore" >&2; exit 1; }
+grep -qxF '.smith/' "$TMP/.gitignore" || { echo "FAIL: missing .smith/ entry in gitignore" >&2; exit 1; }
+
+# Subsequent calls don't add duplicate gitignore entries (idempotent)
+SMITH_HOME="$TMP/.smith" bash "$SCRIPT" target_repo >/dev/null
+count=$(grep -cF '.smith/' "$TMP/.gitignore")
+assert_eq "1" "$count" "idempotent-gitignore"
+
+# Override value persists across calls
 echo '{"target_repo": "/tmp/other", "polling_minutes": 45}' > "$TMP/.smith/config.json"
 got=$(SMITH_HOME="$TMP/.smith" bash "$SCRIPT" target_repo)
 assert_eq "/tmp/other" "$got" "override"
@@ -40,5 +49,12 @@ assert_eq "2" "$got" "max-concurrent-smiths-default"
 if SMITH_HOME="$TMP/.smith" bash "$SCRIPT" no_such_key 2>/dev/null; then
   echo "FAIL: should error on unknown key" >&2; exit 1
 fi
+
+# Pre-existing .gitignore entry: smith_config does NOT duplicate
+rm -rf "$TMP/.smith"
+echo ".smith/" > "$TMP/.gitignore"   # entry already present, no header
+SMITH_HOME="$TMP/.smith" bash "$SCRIPT" target_repo >/dev/null
+count=$(grep -cF '.smith/' "$TMP/.gitignore")
+assert_eq "1" "$count" "preserves-existing-entry"
 
 echo "PASS smith_config.test.sh"

@@ -1,11 +1,11 @@
 ---
-name: smith-enrich
+name: enrich
 description: Read a JIRA ticket and produce an enriched brief (expanded acceptance criteria, suspected affected files, identified ambiguities, suggested DoD). Used by smith-pipeline as input to the brainstorming step.
 ---
 
 # Smith Enrich
 
-See `smith/docs/spec.md` Section 11.3 for the full contract.
+See `docs/spec.md` Section 11.3 for the full contract.
 
 ## Inputs
 
