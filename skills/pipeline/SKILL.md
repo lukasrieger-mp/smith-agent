@@ -104,7 +104,7 @@ Smith **must** validate every Anderson reply against the schema before
 acting on it. Use:
 
 ```
-echo "$reply_json" | bash $CLAUDE_PLUGIN_ROOT/scripts/validate_anderson_reply.sh
+echo "$reply_json" | bash $SMITH_PLUGIN_ROOT/scripts/validate_anderson_reply.sh
 ```
 
 Exit 0 = valid; exit 1 = malformed. A malformed reply is treated as
@@ -115,7 +115,7 @@ To get the high-severity count without re-parsing in skill prose:
 
 ```
 high_count=$(echo "$reply_json" \
-             | bash $CLAUDE_PLUGIN_ROOT/scripts/validate_anderson_reply.sh --count-high)
+             | bash $SMITH_PLUGIN_ROOT/scripts/validate_anderson_reply.sh --count-high)
 ```
 
 ## Phase 3 — live Anderson critic loop

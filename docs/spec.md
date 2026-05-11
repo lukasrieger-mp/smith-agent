@@ -1471,11 +1471,13 @@ names drop the redundant `smith-` prefix.
 ### 17.2 Runtime: loading the plugin
 
 Smith is **not installed** in the conventional sense. Instead, the operator
-starts a Claude Code session inside the target repo with the `--plugin-dir`
-flag pointing at this plugin source:
+starts a Claude Code session inside the target repo with the
+`--plugin-dir` flag pointing at this plugin source, **plus** the
+`SMITH_PLUGIN_ROOT` env var pointing at the same location:
 
 ```bash
 cd /path/to/target-repo
+export SMITH_PLUGIN_ROOT=~/StudioProjects/smith-agent
 claude --plugin-dir ~/StudioProjects/smith-agent
 ```
 
@@ -1483,10 +1485,19 @@ The plugin is loaded for that session. All `/smith:<…>` skills, commands,
 and agents are available. `/reload-plugins` picks up edits to the plugin
 source without restarting the session.
 
+**Why the env var:** skill markdown content references
+`$SMITH_PLUGIN_ROOT` in shell commands. Claude Code's
+`${CLAUDE_PLUGIN_ROOT}` substitution applies only to monitor/hook/MCP/LSP
+command strings (see [plugins-reference Environment variables][envvar-doc]);
+skill-driven Bash invocations don't get the substitution. So we use an
+operator-set env var the Bash subprocess inherits naturally.
+
+[envvar-doc]: https://code.claude.com/docs/en/plugins-reference#environment-variables
+
 A convenient operator alias (in `~/.zshrc`):
 
 ```bash
-alias claude-smith='claude --plugin-dir ~/StudioProjects/smith-agent'
+alias claude-smith='SMITH_PLUGIN_ROOT=~/StudioProjects/smith-agent claude --plugin-dir ~/StudioProjects/smith-agent'
 ```
 
 Then `cd target-repo && claude-smith` is the operator's day-to-day entry

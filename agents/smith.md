@@ -77,12 +77,12 @@ existing remote branch (the PR's head) — you don't re-create it.
 1. Fetch the up-to-date unresolved threads (the spawn-prompt list may
    be stale by the time you start):
    ```
-   threads=$(bash $CLAUDE_PLUGIN_ROOT/scripts/gh_pr_unresolved_comments.sh "$pr_number")
+   threads=$(bash $SMITH_PLUGIN_ROOT/scripts/gh_pr_unresolved_comments.sh "$pr_number")
    ```
 2. Group `$threads` by file/thread. For each thread, in order:
    a. Increment the cycle counter for that thread:
       ```
-      cycles=$(bash $CLAUDE_PLUGIN_ROOT/scripts/pr_fix_cycle_inc.sh "$pr_number" "$thread_id")
+      cycles=$(bash $SMITH_PLUGIN_ROOT/scripts/pr_fix_cycle_inc.sh "$pr_number" "$thread_id")
       ```
    b. If `cycles > 5` (per spec Section 5.5 hard limit), skip the
       thread and add it to a `needs-human-attention` list — Smith is
@@ -136,7 +136,7 @@ operator's audit trail.
 message, before you go idle, call:
 
 ```
-bash $CLAUDE_PLUGIN_ROOT/scripts/active_smiths.sh remove "<your-spawn-name>"
+bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh remove "<your-spawn-name>"
 ```
 
 This removes you from the lead's active-pair tally so the cap doesn't

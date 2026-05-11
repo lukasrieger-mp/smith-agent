@@ -32,8 +32,8 @@ For the full contract see `docs/spec.md` Section 11.2.1.
 
 ```
 cd <worktree>
-bash $CLAUDE_PLUGIN_ROOT/scripts/assert_target_repo.sh
-bash $CLAUDE_PLUGIN_ROOT/scripts/assert_clean_worktree.sh
+bash $SMITH_PLUGIN_ROOT/scripts/assert_target_repo.sh
+bash $SMITH_PLUGIN_ROOT/scripts/assert_clean_worktree.sh
 ```
 
 Then verify auth:
@@ -84,19 +84,19 @@ with actual writes via the Phase 2 helper scripts:
 
 ```bash
 # Resolve config
-claim_status=$(bash $CLAUDE_PLUGIN_ROOT/scripts/smith_config.sh claim_status)
-eligible_status=$(bash $CLAUDE_PLUGIN_ROOT/scripts/smith_config.sh eligible_status)
+claim_status=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh claim_status)
+eligible_status=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh eligible_status)
 
 # Race-guarded transition. The SMITH_EXPECTED_FROM_STATUS env tells
 # jira_transition.sh to verify the current status is still the
 # eligible one before transitioning — guards against the operator
 # manually grabbing the ticket between spawn and now.
 SMITH_EXPECTED_FROM_STATUS="$eligible_status" \
-  bash $CLAUDE_PLUGIN_ROOT/scripts/jira_transition.sh \
+  bash $SMITH_PLUGIN_ROOT/scripts/jira_transition.sh \
        "$ticket" "$claim_status"
 
 # Add the smith-implementing label (idempotent; no-op if already there)
-bash $CLAUDE_PLUGIN_ROOT/scripts/jira_label_add.sh \
+bash $SMITH_PLUGIN_ROOT/scripts/jira_label_add.sh \
      "$ticket" smith-implementing
 ```
 

@@ -72,7 +72,7 @@ human will need.
 
 1. **Promote artefacts** so the next human sees them in the PR:
    ```
-   bash $CLAUDE_PLUGIN_ROOT/scripts/promote_smith_artifacts.sh "$ticket"
+   bash $SMITH_PLUGIN_ROOT/scripts/promote_smith_artifacts.sh "$ticket"
    ```
    This script copies the brief from `.smith/briefs/<ticket>-brief.md`
    into the tracked location `docs/superpowers/specs/<ticket>-brief.md`,

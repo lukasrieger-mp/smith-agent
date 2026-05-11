@@ -28,13 +28,13 @@ After this command, the watchdog runs for the lifetime of the session.
 
 1. Verify CWD is the configured target repo:
    ```
-   bash $CLAUDE_PLUGIN_ROOT/scripts/assert_target_repo.sh
+   bash $SMITH_PLUGIN_ROOT/scripts/assert_target_repo.sh
    ```
 2. Initialize the watchdog's per-target state files (idempotent;
    smith_config.sh handles lazy bootstrap and gitignore management):
    ```
-   bash $CLAUDE_PLUGIN_ROOT/scripts/smith_config.sh target_repo > /dev/null
-   bash $CLAUDE_PLUGIN_ROOT/scripts/active_smiths.sh count > /dev/null
+   bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh target_repo > /dev/null
+   bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh count > /dev/null
    ```
 
 Both should be silent on success.
@@ -45,7 +45,7 @@ Before the monitors emit their first notifications, you may want to do
 an immediate manual scan to surface anything currently eligible:
 
 ```
-bash $CLAUDE_PLUGIN_ROOT/scripts/jira_scan.sh
+bash $SMITH_PLUGIN_ROOT/scripts/jira_scan.sh
 ```
 
 If candidates appear and the cap has room, apply the same dispatch

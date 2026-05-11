@@ -30,8 +30,16 @@ live in [`docs/plans/`](docs/plans/).
 Smith is loaded as a Claude Code plugin via `--plugin-dir`. No install step,
 no symlinks, no marketplace required.
 
+**Important:** Smith's skill content references `$SMITH_PLUGIN_ROOT` in
+the Bash commands it issues. You must set this env var to the plugin
+source path **before** launching Claude Code — Claude Code does not
+populate `$CLAUDE_PLUGIN_ROOT` for skill-driven Bash invocations (only
+for monitor/hook/MCP/LSP commands, where Claude Code substitutes at
+read-time).
+
 ```bash
 cd /path/to/your/target-repo
+export SMITH_PLUGIN_ROOT=~/StudioProjects/smith-agent
 claude --plugin-dir ~/StudioProjects/smith-agent
 ```
 
@@ -62,10 +70,12 @@ the lifetime of the session.
 
 ```bash
 # in ~/.zshrc or equivalent
-alias claude-smith='claude --plugin-dir ~/StudioProjects/smith-agent'
+alias claude-smith='SMITH_PLUGIN_ROOT=~/StudioProjects/smith-agent claude --plugin-dir ~/StudioProjects/smith-agent'
 ```
 
 Then `cd target-repo && claude-smith` is the day-to-day entry point.
+The alias sets `SMITH_PLUGIN_ROOT` for the entire Claude Code session
+so every skill-driven Bash invocation can find the plugin's scripts.
 
 ### Iterating on Smith itself
 

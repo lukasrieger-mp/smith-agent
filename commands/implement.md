@@ -26,12 +26,12 @@ Examples:
 
 1. Verify your CWD is the configured target repo:
    ```
-   bash $CLAUDE_PLUGIN_ROOT/scripts/assert_target_repo.sh
+   bash $SMITH_PLUGIN_ROOT/scripts/assert_target_repo.sh
    ```
    If this fails, abort with the script's error message. Do not continue.
 2. Read the cap and active-Smith count:
    ```
-   max=$(bash $CLAUDE_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_smiths)
+   max=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_smiths)
    ```
    Count current active Smith teammates by checking your team's task list
    for in-progress tasks. If `active >= max`, abort with message:
@@ -50,7 +50,7 @@ Examples:
    markers=$(echo "$ticket_json" | jq -c '
      (.fields.components // [] | map(.name)) + (.fields.labels // [])
    ')
-   platform=$(echo "$markers" | bash $CLAUDE_PLUGIN_ROOT/scripts/classify_platform.sh)
+   platform=$(echo "$markers" | bash $SMITH_PLUGIN_ROOT/scripts/classify_platform.sh)
    ```
    `classify_platform.sh` recognises: `Shared/KMP`, `KMP`, `Shared`,
    `Multiplatform` → `kmp`; `Android` → `android`; pure `iOS` → `ios`;
@@ -63,7 +63,7 @@ Compute the branch name:
 ```
 ticket="$1"
 summary=$(... from acli output ...)
-branch=$(bash $CLAUDE_PLUGIN_ROOT/scripts/make_branch_name.sh "$ticket" "$summary")
+branch=$(bash $SMITH_PLUGIN_ROOT/scripts/make_branch_name.sh "$ticket" "$summary")
 ```
 
 Worktree path: `<target>/.smith/worktrees/<ticket-key-lowercased>/`
@@ -71,7 +71,7 @@ Worktree path: `<target>/.smith/worktrees/<ticket-key-lowercased>/`
 Create the worktree unconditionally:
 
 ```
-bash $CLAUDE_PLUGIN_ROOT/scripts/make_worktree.sh "$ticket" "$branch"
+bash $SMITH_PLUGIN_ROOT/scripts/make_worktree.sh "$ticket" "$branch"
 ```
 
 This is local-only and trivially reversible (`git worktree remove`

@@ -43,16 +43,16 @@ restart-after-crash and against working memory drift).
 
 ```
 if smith_stop_active: log "ignored (stopped)"; return
-active=$(bash $CLAUDE_PLUGIN_ROOT/scripts/active_smiths.sh count)
-max=$(bash $CLAUDE_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_smiths)
+active=$(bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh count)
+max=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_smiths)
 if [[ $active -ge $max ]]: log "ignored (cap $active/$max)"; return
 
 # Fetch fresh candidates (notification keys may be stale by now)
-candidates=$(bash $CLAUDE_PLUGIN_ROOT/scripts/jira_scan.sh)
+candidates=$(bash $SMITH_PLUGIN_ROOT/scripts/jira_scan.sh)
 
 # Pick the top key not already being worked on
 key=$(echo "$candidates" \
-     | bash $CLAUDE_PLUGIN_ROOT/scripts/pick_top_candidate.sh) \
+     | bash $SMITH_PLUGIN_ROOT/scripts/pick_top_candidate.sh) \
   || { log "ignored (all candidates already active)"; return; }
 
 # Dispatch: follow the /smith:implement command's flow exactly,
@@ -64,12 +64,12 @@ dispatch_ticket_mode "$key"
 
 ```
 if smith_stop_active: log "ignored (stopped)"; return
-active=$(bash $CLAUDE_PLUGIN_ROOT/scripts/active_smiths.sh count)
-max=$(bash $CLAUDE_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_smiths)
+active=$(bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh count)
+max=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_smiths)
 if [[ $active -ge $max ]]: log "ignored (cap $active/$max)"; return
 
 # Is a Smith already on this PR?
-if bash $CLAUDE_PLUGIN_ROOT/scripts/active_smiths.sh has-subject "$N" 2>/dev/null:
+if bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh has-subject "$N" 2>/dev/null:
   log "ignored (already in flight)"; return
 
 # Dispatch PR-fix mode
@@ -108,7 +108,7 @@ already documents in its slash command body. The watchdog inlines them.
    agent-teams API. Spawn prompt per spec Section 18.3, mode=ticket.
 5. Register the pair:
    ```
-   bash $CLAUDE_PLUGIN_ROOT/scripts/active_smiths.sh add \
+   bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh add \
         "smith-$key" "anderson-$key" ticket "$key"
    ```
 6. Log: `<ts> | watchdog | dispatch.ticket | key=$key`
@@ -117,14 +117,14 @@ already documents in its slash command body. The watchdog inlines them.
 
 1. Run pre-flight (assert_target_repo).
 2. Check out the existing branch:
-   `bash $CLAUDE_PLUGIN_ROOT/scripts/checkout_pr_worktree.sh <key> <branch>`
+   `bash $SMITH_PLUGIN_ROOT/scripts/checkout_pr_worktree.sh <key> <branch>`
    where `<key>` is derived from the branch suffix (e.g.,
    `task/app-1234-foo` → key `APP-1234`).
 3. Spawn the teammate pair (`smith-pr-$pr`, `anderson-pr-$pr`) per
    spec Section 18.3 PR-fix variant.
 4. Register:
    ```
-   bash $CLAUDE_PLUGIN_ROOT/scripts/active_smiths.sh add \
+   bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh add \
         "smith-pr-$pr" "anderson-pr-$pr" pr-fix "$pr"
    ```
 5. Log: `<ts> | watchdog | dispatch.pr-fix | pr=$pr`
@@ -136,7 +136,7 @@ When Smith sends a `smith.outcome` mailbox message:
 1. Log the outcome JSON to `.smith/log.txt`.
 2. Remove the pair from active-smiths:
    ```
-   bash $CLAUDE_PLUGIN_ROOT/scripts/active_smiths.sh remove "$smith_name"
+   bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh remove "$smith_name"
    ```
 3. The Anderson teammate shuts down (the agent-teams shutdown hook
    handles this; you don't need to do it explicitly).

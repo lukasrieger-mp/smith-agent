@@ -67,11 +67,11 @@ the optional Explore subagent dispatch is gated on `dry_run`.
 1. Pre-flight:
    ```
    cd <worktree>
-   bash $CLAUDE_PLUGIN_ROOT/scripts/assert_target_repo.sh
+   bash $SMITH_PLUGIN_ROOT/scripts/assert_target_repo.sh
    ```
 2. Fetch + flatten + write the brief in one call:
    ```
-   brief_path=$(bash $CLAUDE_PLUGIN_ROOT/scripts/write_brief.sh "$ticket")
+   brief_path=$(bash $SMITH_PLUGIN_ROOT/scripts/write_brief.sh "$ticket")
    ```
    The script fetches the ticket via `acli`, flattens the ADF
    `description` to Markdown via `scripts/adf_to_markdown.sh`, and
