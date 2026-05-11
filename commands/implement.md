@@ -134,31 +134,39 @@ Smith implement complete (dry-run=<true|false>)
 
 Then `tail -5 .smith/log.txt` so the operator sees the recent log lines.
 
-## Phase status (today: Phase 2)
+## Phase status (today: Phase 3)
 
 What's live and what's placeholder, by skill:
 
-| Skill | Phase 2 status | Notes |
+| Skill | Phase 3 status | Notes |
 |---|---|---|
-| `smith:claim` | **LIVE** (real JIRA transition + label add) when `--dry-run` is NOT passed; placeholder when it is | The `dry_run` flag in the spawn prompt picks the branch |
-| `smith:enrich` | **LIVE** brief writing always (no side effects beyond a file in the worktree); Explore subagent dispatch deferred to Phase 2.x | Brief lands in `<worktree>/.smith/briefs/<key>-brief.md` |
-| `smith:pipeline` | Placeholder — Anderson always replies `{"findings": []}`; gates pass on round 1 | Phase 3 activates the real critic loop |
+| `smith:claim` | **LIVE** (real JIRA transition + label add) when `--dry-run` is NOT passed; placeholder when it is | |
+| `smith:enrich` | **LIVE** brief writing always; Explore subagent dispatch deferred to Phase 2.x | |
+| `smith:pipeline` | **LIVE** Anderson critic loop. Real spec/plan/diff gates with bounded 3-round dialogue and divergence detection. | Gates may fail with `{result: "stuck"}` legitimately now |
 | `smith:pr` | Placeholder — logs intended actions, no `git push`, no `gh pr create` | Phase 4 activates real PR opening |
 
-**Consequence for operators today**: running `/smith:implement APP-XXXX`
+**Consequence for operators today** — running `/smith:implement APP-XXXX`
 without `--dry-run` WILL:
 
-- Transition the JIRA ticket from the eligible status to the claim status
+- Transition the JIRA ticket from eligible status to claim status
 - Add the `smith-implementing` label
 - Create a `task/<key>-<slug>` branch in `<target>/.smith/worktrees/<key>/`
 - Write a brief file inside that worktree
-- Walk through pipeline + pr in placeholder mode (Smith's working tree
-  gains a spec + plan + impl commit but the pipeline's critic dialogue
-  is a no-op and the PR is never opened)
+- Drive a real three-gate pipeline (spec / plan / diff) with Anderson
+  reviewing each gate. **Smith may legitimately get stuck at any gate.**
+- Walk `smith:pr` in placeholder mode (Smith's working tree has
+  committed spec + plan + impl, but the branch is not pushed and no
+  PR is opened)
 
-To revert: manually transition the ticket back, `acli ... edit
---remove-labels smith-implementing`, and `git worktree remove
-.smith/worktrees/<key>`.
+To revert mid-run (the ticket is in `In Progress` with the
+`smith-implementing` label, worktree has committed work but no PR):
+
+```
+acli jira workitem transition --key APP-XXX --status "Ready for Development" --yes
+acli jira workitem edit --key APP-XXX --remove-labels smith-implementing --yes
+git worktree remove .smith/worktrees/<key-lower>
+```
 
 **Prefer `--dry-run` until Phase 4 closes the loop** (real PR open
-gives you a clean way to land or close out the work).
+gives you a clean way to either land the work or close out the run via
+the WIP-stuck path).

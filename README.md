@@ -107,18 +107,19 @@ docs/plans/                  One plan per phase
 
 ## Status
 
-Phase 2 of 7 done (mostly). Live: plugin loads, monitors run, hook fires,
-`smith:claim` performs real JIRA writes when `--dry-run` is off,
-`smith:enrich` produces a real brief. Placeholder: `smith:pipeline`
-(real Anderson critic loop comes in Phase 3) and `smith:pr` (real PR
-open comes in Phase 4). Deferred sub-phase: Phase 2.x — Explore
-subagent integration for the brief's affected-files analysis.
+Phase 3 of 7 done. Live: plugin loads, monitors run, hook fires,
+`smith:claim` performs real JIRA writes, `smith:enrich` produces a real
+brief, `smith:pipeline` drives a real three-gate critic dialogue with
+Anderson (bounded 3-round per gate with divergence detection).
+Placeholder: `smith:pr` (Phase 4). Deferred sub-phase: Phase 2.x —
+Explore subagent integration for the brief's affected-files analysis.
 
 See [`docs/spec.md`](docs/spec.md) Section 16 for the full phase
 decomposition.
 
 **Practical operator advice today**: prefer `/smith:implement APP-XXXX
 --dry-run` until Phase 4 lands. Without `--dry-run`, Smith WILL move
-the ticket's JIRA state and create a real branch — but won't open a PR,
-leaving you to either pick up the work manually or revert the JIRA
-state by hand.
+the ticket's JIRA state, create a real branch, and commit a real
+spec + plan + impl into the worktree — but won't open a PR, leaving
+you to either pick up the work manually or revert the JIRA state by
+hand.

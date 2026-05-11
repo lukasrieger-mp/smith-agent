@@ -1353,10 +1353,12 @@ decompose into phases that can be built and verified independently:
    Deferred to Phase 2.x: the Explore subagent integration that fills in
    the "Smith's reading" section of the brief with affected-files
    analysis.
-4. **Phase 3 — Live `smith:pipeline` with collaborative critic loop.**
-   Wire up brainstorming, writing-plans, subagent-driven-development.
-   Activate real Anderson critique via mailbox dialogue (Section 8.4). Test
-   one real ticket end-to-end through to a draft PR.
+4. **Phase 3 — Live `smith:pipeline` with collaborative critic loop. ✅
+   DONE.** Anderson runs the real critic prompt (three review modes,
+   confidence-≥80 scoring, structured JSON mailbox replies). Smith
+   validates Anderson's replies against a schema script before acting on
+   them. Three-gate pipeline with bounded 3-round dialogue + divergence
+   detection per Section 5.5. Gates may legitimately reject Smith's work.
 5. **Phase 4 — Live `smith:pr` + WIP-stuck path.** Both success and stuck
    PR creation, artifact promotion on stuck, JIRA label management.
 6. **Phase 5 — PR-fix mode (Smith dispatch mode #2) + `smith:pr-watch`.**

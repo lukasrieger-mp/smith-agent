@@ -98,18 +98,50 @@ Anderson with `mode: "plan"`. Commit message:
   `{result: "stuck", reason: "quality-check failed: <one-line summary>"}`.
 - Divergence at any gate → stuck per Gate-1 rules.
 
-## Phase 1 placeholder behaviour
+## Reply parsing
 
-The global superpowers skills exist and work. The Anderson teammate
-exists. **What's not yet wired**: the placeholder Anderson body always
-returns `{"findings": []}` regardless of input. So every gate passes on
-round 1 with no real critique. The pipeline still walks all three gates
-and commits per gate, producing real files in the worktree — but the
-critic dialogue is a no-op.
+Smith **must** validate every Anderson reply against the schema before
+acting on it. Use:
 
-Phase 3 of the spec replaces the placeholder Anderson body with the
-real critic logic (three review modes, confidence-≥80 scoring, mailbox
-JSON schema).
+```
+echo "$reply_json" | bash $CLAUDE_PLUGIN_ROOT/scripts/validate_anderson_reply.sh
+```
+
+Exit 0 = valid; exit 1 = malformed. A malformed reply is treated as
+`{result: "error", reason: "malformed anderson reply"}` — the lead
+retries with a fresh pair.
+
+To get the high-severity count without re-parsing in skill prose:
+
+```
+high_count=$(echo "$reply_json" \
+             | bash $CLAUDE_PLUGIN_ROOT/scripts/validate_anderson_reply.sh --count-high)
+```
+
+## Phase 3 — live Anderson critic loop
+
+As of Phase 3, the Anderson teammate runs the live critic prompt
+(see `agents/anderson.md`). The pipeline drives real round-trips
+with structured JSON in both directions:
+
+- Smith mails `review.request` → Anderson reads artefact → mails
+  `anderson.review.findings`
+- Smith parses (via the validator), counts high-severity findings,
+  decides to address-and-iterate or commit-and-advance
+- Smith may mail `rebut` for individual findings; Anderson replies
+  `anderson.finding.drop` or `anderson.finding.hold`. Rebuts stay
+  within the same critic round (don't count as a new round).
+
+Anderson runs in placeholder mode **only** when `dry_run=true`. In
+that case, Smith should still send the mailbox request (to exercise
+the team plumbing) but Anderson's reply will be vacuous and the gate
+passes trivially.
+
+## Still placeholder (Phase 4+)
+
+`smith:pr` is still a placeholder skill at the end of the pipeline.
+Smith committing per-gate work to the worktree is real; pushing those
+commits and opening a PR is not. Phase 4 closes that loop.
 
 ## Log entries
 
