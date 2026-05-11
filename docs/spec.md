@@ -120,9 +120,11 @@ Section 13.
 Smith is built as a Claude Code **agent team** (see Section 17 for the
 team-mechanics reference). The runtime topology has three roles:
 
-- **Watchdog session** — the team lead. Long-lived, runs the `loop` skill at
-  30-minute cadence. Scans JIRA, scans open PRs, and dispatches teammates.
-  Never edits code itself; never invokes pipeline skills directly.
+- **Watchdog session** — the team lead. Long-lived. **Event-driven via
+  plugin monitors (Section 5.6)**: receives notifications when new JIRA
+  candidates appear, when PR reviewers leave comments, or when the kill
+  switch is toggled. Reacts by dispatching teammates. Never edits code
+  itself; never invokes pipeline skills directly.
 - **Mr. Smith teammate** — short-lived per-ticket Claude Code session,
   defined by `agents/smith.md`. Owns a worktree, drives the
   claim/enrich/pipeline/PR steps inside its own fresh context. Two dispatch
@@ -136,17 +138,27 @@ team-mechanics reference). The runtime topology has three roles:
 ### 5.1 System shape
 
 ```
+       ┌────────────────────────────────────────────────────────────┐
+       │  PLUGIN MONITORS (background, started on /smith:watchdog)  │
+       │  ─ monitor_jira.sh         emits smith.jira.new_candidates │
+       │  ─ monitor_pr_comments.sh  emits smith.pr.new_comments     │
+       │  ─ monitor_stop.sh         emits smith.stop.{requested,…}  │
+       └───────────────────────┬────────────────────────────────────┘
+                               │ stdout lines = notifications
+                               ▼
                 ┌─────────────────────────────────────────────────┐
- /smith:       ─►│  WATCHDOG SESSION (team lead, long-lived)      │◄── /loop 30m
- watchdog       │                                                 │
- /smith:       ─►│  Per tick:                                     │
- implement      │   (1) fan-out PR-fix teammates within cap       │
-                │       (one per open PR with unresolved comments)│
-                │   (2) if room remains, dispatch ONE new         │
-                │       ticket-impl pair (Smith + Anderson)       │
+ /smith:       ─►│  WATCHDOG SESSION (team lead, long-lived)      │
+ watchdog       │  Event-driven: reacts to monitor notifications  │
+ /smith:       ─►│                                                 │
+ implement      │  On smith.jira.new_candidates:                  │
+                │     if active < 2: dispatch ONE Smith+Anderson  │
+                │  On smith.pr.new_comments:                      │
+                │     if active < 2: dispatch PR-fix Smith+Anderson│
+                │  On smith.stop.requested/lifted:                │
+                │     pause/resume new dispatch                   │
                 │                                                 │
                 │  Owns: kill switches, .smith/ state, scheduling │
-                │  Cap:  max 2 concurrent ticket-impl Smiths      │
+                │  Cap:  max 2 concurrent Smiths (impl + pr-fix)  │
                 └───────┬───────────────────────────┬─────────────┘
                         │ team spawn               │ team spawn
                         ▼                          ▼
@@ -179,10 +191,11 @@ during its lifetime. The pair returns a structured outcome to the lead
 
 | Lane | Where it runs | Cap |
 |---|---|---|
-| Discovery (JIRA scan) | Lead, every tick | n/a |
-| PR-watch detection (`gh pr list`) | Lead, every tick | n/a |
-| PR-fix execution | Spawned teammate pair (Smith + Anderson) | shares the 2-cap below |
-| Ticket implementation | Spawned teammate pair (Smith + Anderson) | shares the 2-cap below |
+| Discovery (JIRA scan) | `monitor_jira.sh` (background, 30 min poll) | n/a |
+| PR-comment detection | `monitor_pr_comments.sh` (background, 1 min poll) | n/a |
+| Kill-switch watch | `monitor_stop.sh` (background, 2 s poll) | n/a |
+| PR-fix execution | Spawned teammate pair (Smith + Anderson) on notification | shares the 2-cap below |
+| Ticket implementation | Spawned teammate pair (Smith + Anderson) on notification | shares the 2-cap below |
 
 **Hard ceiling: 2 active Smiths total.** Both ticket-impl and PR-fix Smiths
 count against this. Each Smith has an attached Anderson, so worst-case
@@ -192,34 +205,50 @@ The cap is intentionally low. The operator's previous decision: small,
 predictable concurrency over throughput-maximizing parallelism. Hobby-project
 risk tolerance applies.
 
-### 5.3 Per-tick decision tree (lead)
+### 5.3 Notification-handling decision logic (lead)
+
+Three distinct notification types arrive from the monitors. The lead reacts
+to each according to the rules below. Each notification arrives as one stdout
+line from the corresponding monitor, parsed as JSON by the agent.
 
 ```
-tick:
-  (0) active = count of Smith teammates currently running (not idle)
-       cap   = config.max_concurrent_smiths (default 2)
-  (1) PR-fix fan-out:
-        for each open PR labelled `smith-authored` with unresolved comments:
-          if NO Smith teammate already addressing that PR
-            AND active < cap:
-              spawn { smith (pr-fix mode), anderson } pair for PR
-              active += 1
-  (2) Single new impl pickup (at most ONE per tick):
-        if active < cap:
-          query JIRA candidates (Section 6.1 JQL) within current sprint
-          if any:
-            pick top (priority DESC, created ASC)
-            spawn { smith (ticket mode), anderson } pair for ticket
-  (3) tick ends; lead returns to /loop wait
+on smith.jira.new_candidates {keys: [...]}:
+  active = count of Smith teammates currently running (not idle)
+  cap    = config.max_concurrent_smiths (default 2)
+  if smith_stop_active: return  # paused
+  if active >= cap: return       # full; the candidate stays eligible
+                                 # and the next notification will pick it up
+  # Pick highest-priority key from `keys` per Section 6 ordering (sprint,
+  # priority DESC, created ASC). Pull additional context via jira_scan.
+  spawn { smith (ticket mode), anderson } pair for chosen key
+
+on smith.pr.new_comments {pr, new_count, branch}:
+  if smith_stop_active: return
+  if active >= cap: return  # PR is queued; next notification will retry
+  if there's already a PR-fix Smith working on this PR: return
+  spawn { smith (pr-fix mode), anderson } pair for the PR
+
+on smith.stop.requested:
+  smith_stop_active = true
+  # Optional: signal in-flight teammates to wrap up cleanly at the next
+  # safe checkpoint (between gates). Do not kill in-progress work mid-edit.
+
+on smith.stop.lifted:
+  smith_stop_active = false
+  # New notifications will resume dispatching.
 ```
 
-The "at most one new impl per tick" rule preserves a deliberate operator
-intervention window: the operator can manually dispatch a second ticket via
-`/smith:implement APP-XXXX` within the 30-minute gap between cycles. If the
-watchdog greedily grabbed both slots immediately, that window would close.
+The "one new impl per *notification*" rule (rather than "per tick") preserves
+a deliberate operator intervention window: if a notification batch contains
+multiple new candidates, the lead dispatches at most one. The remaining
+candidates are picked up on the next `smith.jira.new_candidates`
+notification — which only fires when the candidate set has *changed* again
+(see Section 5.6). This gives the operator time to manually dispatch a
+specific candidate via `/smith:implement APP-XXXX` if they want to override
+the natural priority.
 
-PR-fix fan-out is more permissive (within the cap) because incoming reviewer
-comments deserve a responsive turnaround.
+PR-fix dispatch is more permissive (any free slot within the 2-cap is fair
+game), because incoming reviewer comments deserve a responsive turnaround.
 
 ### 5.4 Invariants
 
@@ -261,6 +290,82 @@ No token cap. The iteration ceilings plus the concurrency cap plus the
 45-minute build wall-clock are sufficient: a ticket that consumes unusual
 token volume but converges through the gates is doing real work; a ticket
 that doesn't converge will hit the round-3 ceiling first.
+
+### 5.6 Monitors
+
+Smith uses [Claude Code plugin monitors][monitors-doc] — declarative
+background processes that emit notifications to the watchdog session
+without it needing to ask for them. This replaces the polling design the
+spec previously had (`/loop 30m`) with an event-driven one.
+
+[monitors-doc]: https://code.claude.com/docs/en/plugins-reference#monitors
+
+#### 5.6.1 Configured monitors
+
+Defined in `monitors/monitors.json` at the plugin root:
+
+| Monitor | Script | Poll interval | Notification type | Trigger |
+|---|---|---|---|---|
+| `jira-candidates` | `monitor_jira.sh` | 30 min (`SMITH_JIRA_POLL_INTERVAL`) | `smith.jira.new_candidates` | New eligible JIRA key appears (diff against last scan) |
+| `pr-comments` | `monitor_pr_comments.sh` | 60 sec (`SMITH_PR_POLL_INTERVAL`) | `smith.pr.new_comments` | New unresolved review thread on a Smith-authored PR |
+| `stop-sentinel` | `monitor_stop.sh` | 2 sec (`SMITH_STOP_POLL_INTERVAL`) | `smith.stop.{requested,lifted}` | `.smith/STOP` file appears or disappears |
+
+All three are gated on `"when": "on-skill-invoke:watchdog"`, meaning they
+do not start until the operator invokes `/smith:watchdog` for the first
+time in a session. After that, they run for the lifetime of the session
+(per the plugins doc: "Disabling a plugin mid-session does not stop
+monitors that are already running. They stop when the session ends").
+
+#### 5.6.2 Notification semantics
+
+Each monitor only emits when **state changes**, never on every poll. This
+matters:
+
+- A `smith.jira.new_candidates` notification fires *only* when a new
+  candidate key has appeared since the previous scan. If the same set of
+  candidates exists between polls, nothing is emitted.
+- A `smith.pr.new_comments` notification fires only when a Smith PR gains
+  at least one new unresolved thread. Resolution by the reviewer triggers
+  no notification.
+- A `smith.stop.requested` notification fires the moment the sentinel
+  file appears; `smith.stop.lifted` fires the moment it's removed.
+  Multiple toggles produce one notification per transition.
+
+The agent doesn't have to filter "is this new?" itself — the monitor
+already did the diff against its private state file in
+`.smith/state/<monitor>-*.json`.
+
+#### 5.6.3 State files (gitignored)
+
+```
+.smith/state/
+  last-jira-candidates.json         (sorted array of last-scan keys)
+  pr-comments/pr-<num>.json         (sorted array of last-scan thread ids)
+```
+
+The monitors create these on first run. They're under `.smith/`, which is
+gitignored automatically by `smith_config.sh` on first call (Section 17.3).
+If a state file is missing or corrupted, the monitor recovers by treating
+the previous state as empty — at worst, the next notification will appear
+to contain everything-as-new for one cycle.
+
+#### 5.6.4 Why monitors instead of `/loop`
+
+| Concern | `/loop`-based design | Monitor-based design |
+|---|---|---|
+| When work happens | Every N minutes, scan everything | Only when something changed |
+| Per-signal cadence | All signals share one cadence | Each monitor sets its own (e.g. PR-comments at 1 min, JIRA at 30 min) |
+| Kill-switch latency | Up to one full cycle (30 min worst case) | ~2 seconds |
+| Operator interrupts | Have to wait for next /loop tick | Notifications arrive immediately as they fire |
+| Token usage | Agent wakes regularly even when idle | Agent only wakes on real signal |
+| State management | Stateless (re-scan each tick) | Each monitor maintains a tiny state file for diffing |
+
+#### 5.6.5 Manual override remains available
+
+The operator can still call `/smith:implement APP-XXXX` directly to dispatch
+a specific ticket without waiting for a notification. And `/smith:watchdog`
+can be re-invoked to "scan now" (force the monitors to emit any pending
+state on the next poll) — the skill body documents this.
 
 ## 6. JIRA integration
 
@@ -732,29 +837,37 @@ Components partition by **execution context**: which session(s) load them.
 - **Body:** the Anderson persona (Section 8.2). Three review modes,
   confidence-≥80 scoring, structured mailbox replies.
 
-### 11.1 Outer-session skills (load in the watchdog session = team lead)
+### 11.1 Outer-session components (run in / loaded by the watchdog session)
 
-#### 11.1.1 `smith:watchdog` (the tick)
+#### 11.1.1 `smith:watchdog` (notification arming + manual scan trigger)
 
-- **Input:** none. Reads JIRA via `acli` and open PRs via `gh pr list
-  --label smith-authored`. Reads the team task list for active-teammate count.
-- **Output:** at most ONE action per tick — see Section 5.3 decision tree.
-- **Side effects:** spawns teammate pairs (Smith + Anderson) via the team
-  API. Writes a one-line entry to `.smith/log.txt` per dispatched action or
-  no-op.
+- **Input:** none directly.
+- **Output:** on first invocation, starts the three background monitors
+  (gated via `"when": "on-skill-invoke:watchdog"` in `monitors/monitors.json`).
+  Optionally performs an immediate "scan now" pass for the operator. On
+  subsequent invocations, behaves as a no-op or as a forced scan trigger.
+- **Side effects:** monitors start running; no other side effects directly.
+  The lead reacts to subsequent monitor notifications per Section 5.3.
+- **Notification reaction rules:** documented in the skill body. The lead's
+  loaded context tells it how to interpret each `smith.*` notification type.
 
-#### 11.1.2 `smith:pr-watch` (PR-fix fan-out)
+#### 11.1.2 Plugin monitors (background processes)
 
-- **Input:** none. Discovers open Smith-authored PRs.
-- **Output:** spawns one teammate pair per open PR with unresolved comments
-  (within the cap). The spawned pair is in PR-fix mode (Section 8.3).
-- **Side effects:** creates worktrees for PRs that don't have one yet via
-  `git worktree add .smith/worktrees/<key>/ <branch>`. Counts active Smiths
-  against the 2-cap before each spawn.
+Configured in `monitors/monitors.json`; full design in Section 5.6.
 
-These two outer-session skills are invoked by the lead each tick (via the
-`/loop` skill driving `/smith:watchdog`). They do not edit code; they
-schedule.
+- `jira-candidates` (`scripts/monitor_jira.sh`) — emits `smith.jira.new_candidates`
+- `pr-comments` (`scripts/monitor_pr_comments.sh`) — emits `smith.pr.new_comments`
+- `stop-sentinel` (`scripts/monitor_stop.sh`) — emits `smith.stop.{requested,lifted}`
+
+Each monitor maintains its own state file under `.smith/state/` to diff
+against the previous poll, so notifications only fire on *change*.
+
+#### 11.1.3 `smith:pr-watch` (legacy, may be retired)
+
+The pr-watch skill from the pre-monitor design is now largely redundant —
+the `pr-comments` monitor handles PR-comment fan-out via notifications.
+Kept temporarily as a manual "rescan all PRs now" trigger. May be removed
+in a later phase if the monitor proves sufficient.
 
 ### 11.2 Inner-teammate skills (load inside Smith teammate's context)
 
@@ -1189,7 +1302,9 @@ modifications beyond the runtime state directory.
     enrich/SKILL.md              → /smith:enrich    (inner-teammate)
     pipeline/SKILL.md            → /smith:pipeline  (inner-teammate)
     pr/SKILL.md                  → /smith:pr        (inner-teammate)
-    pr-watch/SKILL.md            → /smith:pr-watch  (outer-session fan-out)
+    pr-watch/SKILL.md            → /smith:pr-watch  (legacy; see 11.1.3)
+  monitors/
+    monitors.json                Background monitors (Section 5.6)
   scripts/                       Shared bash helpers (Section 11.3)
     make_branch_name.sh
     classify_platform.sh
@@ -1197,6 +1312,9 @@ modifications beyond the runtime state directory.
     assert_target_repo.sh
     smith_config.sh
     jira_scan.sh
+    monitor_jira.sh              ← run by jira-candidates monitor
+    monitor_pr_comments.sh       ← run by pr-comments monitor
+    monitor_stop.sh              ← run by stop-sentinel monitor
     promote_smith_artifacts.sh
   test/
     lib/assert.sh

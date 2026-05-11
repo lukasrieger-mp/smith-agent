@@ -15,7 +15,9 @@ live in [`docs/plans/`](docs/plans/).
 
 ## Prerequisites
 
-- Claude Code v2.1.32 or later (`claude --version`)
+- Claude Code v2.1.105 or later (`claude --version`) — needed for plugin
+  monitors. Agent teams alone require v2.1.32+, but Smith uses monitors
+  as well.
 - Agent teams enabled in `~/.claude/settings.json`:
   ```json
   { "env": { "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1" } }
@@ -42,7 +44,14 @@ step.
   one specific ticket
 - `/smith:implement APP-1234 --dry-run` — walk the pipeline without external
   side effects (no JIRA writes, no git push, no PR creation)
-- `/smith:watchdog` — start the autonomous watchdog loop (default 30 min)
+- `/smith:watchdog` — arm the autonomous watchdog. This starts three
+  background **monitors** (JIRA candidates, PR review comments, kill
+  switch) that emit notifications whenever something changes. The agent
+  reacts to those notifications by dispatching teammate pairs.
+
+Until `/smith:watchdog` is invoked the first time in a session, no monitors
+run and Smith stays passive. Run it once to "arm" — monitors then run for
+the lifetime of the session.
 
 ### Suggested shell alias
 
@@ -77,7 +86,9 @@ agents/smith.md              Implementer (teammate)  ← added in Phase 1.5
 commands/                    Slash commands  → /smith:implement, /smith:watchdog
 skills/                      → /smith:watchdog, /smith:claim, /smith:enrich,
                                 /smith:pipeline, /smith:pr, /smith:pr-watch
+monitors/monitors.json       Background notification monitors (Section 5.6)
 scripts/                     Shared bash helpers (jira_scan, classify, ...)
+                             + monitor scripts (monitor_jira.sh, etc.)
 test/                        Script tests + JSON fixtures
 docs/spec.md                 Design spec
 docs/plans/                  One plan per phase
