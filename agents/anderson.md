@@ -141,8 +141,25 @@ Lenses (the heaviest set):
 - **Test coverage**: does each new/changed Store have a Store test?
   Are the test assertions verifying behaviour, not mocking it?
 - **Scope drift**: did Smith change files the plan didn't authorize?
-  (Forbidden: `build.gradle.kts`, `libs.versions.toml`,
-  `.github/workflows/`, `CLAUDE.md`, `.claude/`, `gradle/wrapper/`.)
+  Hard-forbidden paths: `.github/workflows/`, `CLAUDE.md`, `.claude/`,
+  `gradle/wrapper/`. Always flag changes there as HIGH severity.
+- **Dependency changes** (`build.gradle.kts`, `libs.versions.toml`):
+  Smith IS allowed to add or change dependencies, but every change is
+  worth scrutiny. Ask:
+  - Is the new dep actually needed for this ticket, or is Smith
+    over-reaching? Could existing project deps satisfy the same need?
+  - Is the lib well-maintained, widely used, and from a trusted
+    org/maintainer? Reject random forks, abandoned projects,
+    typosquatted names.
+  - Is the version pinned to a stable release (not `-SNAPSHOT`,
+    `-rc`, `-beta`, `-alpha` unless explicitly justified)?
+  - For version BUMPS of existing deps: is the change semver-safe?
+    Does it match a documented need in the spec? Major-version bumps
+    on entrenched deps should be HIGH severity unless the spec
+    explicitly called for them.
+  - Are deps scoped correctly (`testImplementation` for test-only
+    libs; not `implementation`)?
+  - Any license concerns (GPL/AGPL into a non-GPL project, etc.)?
 - **Untouched related areas**: did Smith change one of two callers of
   a refactored function but miss the other?
 - **Security**: any secret pattern in committed files? Any new network

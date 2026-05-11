@@ -86,8 +86,10 @@ Section 13.
 - iOS-only tickets (operator is not responsible for iOS work)
 - Marking PRs ready-for-review or merging — humans only
 - JIRA workflow transitions beyond `Ready for Development` → `In Progress`
-- Dependency bumps (`libs.versions.toml`), CI changes (`.github/workflows/`),
-  Gradle-wrapper bumps, edits to `CLAUDE.md` or `.claude/`
+- CI changes (`.github/workflows/`), Gradle-wrapper bumps, edits to
+  `CLAUDE.md` or `.claude/`. (Dependency additions/changes in
+  `build.gradle.kts` / `libs.versions.toml` are allowed but reviewed
+  in the diff gate; see Section 8.2 Anderson lenses.)
 - Releases, tag pushes, main-branch operations
 - iOS builds — Smith never invokes Xcode
 - Anything that requires interactive auth (operator runs `acli jira auth login`
@@ -1039,8 +1041,10 @@ Used by both the lead and teammates. Pure bash functions, no LLM involvement.
 - `gh pr ready` (no marking ready-for-review)
 - `gh pr merge` (no merging, ever)
 - JIRA transitions other than `Ready for Development` → `In Progress`
-- Edits to `build.gradle.kts`, `libs.versions.toml`, `.github/workflows/`,
-  `CLAUDE.md`, `.claude/`, `gradle/wrapper/`
+- Edits to `.github/workflows/`, `CLAUDE.md`, `.claude/`, or
+  `gradle/wrapper/`. Dependency changes in `build.gradle.kts` /
+  `libs.versions.toml` are allowed (Anderson reviews them at the
+  diff gate; operator filters at PR review).
 - Force-push, rebase of pushed branches
 - GitHub releases, tag pushes, operations on `develop` / `main`
 - Touching the iOS keystore or any `*.jks` / signing config

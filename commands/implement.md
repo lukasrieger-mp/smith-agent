@@ -59,11 +59,21 @@ Examples:
 
 ## Worktree setup (always live, even in --dry-run)
 
-Compute the branch name:
+Compute the branch name. **Important: the slug passed to
+`make_branch_name.sh` must be in English**, even if the JIRA summary
+is in German (or another language). myposter-app convention: tickets
+written by non-developers may be in German, but branches, commits,
+PRs, and all code-related artefacts stay in English. If the ticket
+summary is non-English, compose a 3–6 word English descriptive phrase
+that captures the same intent, and pass *that* as the slug:
+
 ```
 ticket="$1"
-summary=$(... from acli output ...)
-branch=$(bash $SMITH_PLUGIN_ROOT/scripts/make_branch_name.sh "$ticket" "$summary")
+raw_summary=$(... from acli output ...)
+# If raw_summary is non-English, translate to a short English phrase.
+# Example: "Größere Schrift für ältere Nutzer" → "larger font for older users"
+english_summary=<your English rendering of the ticket's intent>
+branch=$(bash $SMITH_PLUGIN_ROOT/scripts/make_branch_name.sh "$ticket" "$english_summary")
 ```
 
 Worktree path: `<target>/.smith/worktrees/<ticket-key-lowercased>/`
