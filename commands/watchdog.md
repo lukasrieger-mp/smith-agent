@@ -1,5 +1,5 @@
 ---
-description: Arm the autonomous Smith watchdog. Starts background monitors; lead reacts to notifications by dispatching teammate pairs within the 2-cap. Flag: `--pr-only` (ignore JIRA candidates; only react to PR review comments).
+description: Arm the autonomous Smith watchdog. Starts background monitors; lead reacts to notifications by dispatching teammate pairs within two separate caps, `max_concurrent_impl_smiths` and `max_concurrent_fixer_smiths` (both default 2). Flag: `--pr-only` (ignore JIRA candidates; only react to PR review comments).
 ---
 
 # /smith:watchdog
@@ -43,11 +43,11 @@ Background monitors:
   only when a *new* eligible ticket key appears. *Notifications are
   ignored by the lead when `--pr-only` is active.*
 - `pr-comments` — polls open Smith-authored PRs every 60 sec (active),
-  backing off to 30 min after 30 quiet cycles (≈30 min of active
-  polling). Cadence resets to active on either of: a new unresolved
-  thread arriving, or Smith pushing commits (which kicks the monitor
-  via `pr_comments_reset.sh`). Emits `smith.pr.new_comments` when a
-  PR gains new unresolved threads.
+  backing off to 30 min after 30 quiet cycles. Cadence resets on a
+  new unresolved thread OR a Smith push (via pr_comments_reset.sh).
+  Emits `smith.pr.new_comments`, which the watchdog turns into a
+  smith-fixer + anderson-fixer dispatch (capped separately from impl,
+  with a per-PR round cap of `max_fix_rounds`).
 - `stop-sentinel` — watches `.smith/STOP` every 2 sec; emits
   `smith.stop.requested` or `smith.stop.lifted` on state change.
 
@@ -118,11 +118,17 @@ notification you receive for the rest of the session.
 
 Summary of the rules:
 
-- `smith.jira.new_candidates` → if cap has room, not stopped, **and mode
+- `smith.jira.new_candidates` → if the impl cap
+  (`max_concurrent_impl_smiths`) has room, not stopped, **and mode
   is `full`**, fetch fresh candidates, pick top eligible, dispatch
-  ticket-mode pair. In `pr-only` mode, log "ignored (pr-only)" and skip.
-- `smith.pr.new_comments` → if cap has room and no PR-fix Smith
-  already on that PR, dispatch PR-fix-mode pair (regardless of mode)
+  ticket-mode pair (smith-impl + anderson-impl). In `pr-only` mode, log
+  "ignored (pr-only)" and skip.
+- `smith.pr.new_comments` → if the fixer cap
+  (`max_concurrent_fixer_smiths`) has room, no fixer pair already on
+  that PR, and the PR's fix-round counter is below `max_fix_rounds`
+  (default 5), dispatch a smith-fixer + anderson-fixer pair (regardless
+  of mode). On cap-hit for `max_fix_rounds`, the watchdog labels the PR
+  `needs-human-attention` and skips dispatch.
 - `smith.stop.requested` → set `smith_stop_active = true`, pause new
   dispatches; in-flight teammates wrap up at next safe checkpoint
 - `smith.stop.lifted` → clear the flag, resume
@@ -137,8 +143,10 @@ optional scan-now step.
 ## On `/smith:implement APP-XXXX` while watchdog is armed
 
 The two are complementary. Operator-driven `/smith:implement`
-dispatches respect the same `active_smiths.sh` cap and will not
-exceed 2 active Smiths even with watchdog dispatching alongside.
+dispatches respect the same `active_smiths.sh` caps — two separate
+budgets, `max_concurrent_impl_smiths` and `max_concurrent_fixer_smiths`
+(both default 2) — and will not exceed them even with watchdog
+dispatching alongside.
 
 ## Kill switches
 
@@ -152,8 +160,13 @@ exceed 2 active Smiths even with watchdog dispatching alongside.
 
 When armed, the watchdog runs fully autonomously:
 
-- Both Smith dispatch modes (ticket + pr-fix) are active
-- Cap enforcement via `active_smiths.sh` (read at every notification)
+- Both Smith dispatch modes (ticket-impl + pr-fixer) are active
+- Cap enforcement via `active_smiths.sh` (read at every notification),
+  using the two separate budgets `max_concurrent_impl_smiths` and
+  `max_concurrent_fixer_smiths` (both default 2)
+- Per-PR fix-round cap (`max_fix_rounds`, default 5) enforced before
+  every fixer dispatch; on cap-hit the PR is labelled
+  `needs-human-attention` and skipped
 - Notification-reaction rules in `skills/watchdog/SKILL.md` are
   executable runbooks backed by helper scripts: `pick_top_candidate.sh`,
   `make_worktree.sh`, `checkout_pr_worktree.sh`,
