@@ -10,7 +10,7 @@ set -euo pipefail
 
 PR="${1:?usage: cleanup_pr_state.sh <PR>}"
 
-target_root=$(git rev-parse --show-toplevel)
+target_root=$(bash "$(dirname "$0")/resolve_target_root.sh")
 rounds_file="$target_root/.smith/state/pr-fix-rounds/pr-$PR.json"
 comments_file="$target_root/.smith/state/pr-comments/pr-$PR.json"
 

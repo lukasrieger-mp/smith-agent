@@ -67,4 +67,15 @@ if ( cd "$TMP" && bash "$SCRIPT" 891 --trigger --dismiss 1 2>/dev/null ); then
   echo "FAIL: --trigger --dismiss combo should error" >&2; exit 1
 fi
 
+# Verify the script writes to the MAIN repo path even when called from a worktree.
+worktree="$TMP/.smith/worktrees/app-7777"
+( cd "$TMP" && git worktree add -q -b task/wt "$worktree" )
+got=$( cd "$worktree" && bash "$SCRIPT" 7777 )
+assert_eq "1" "$got" "first-bump-from-worktree"
+# State must land in the MAIN repo's .smith/state/, not the worktree's.
+[[ -f "$TMP/.smith/state/pr-fix-rounds/pr-7777.json" ]] \
+  || { echo "FAIL: worktree call wrote to wrong path" >&2; exit 1; }
+[[ ! -f "$worktree/.smith/state/pr-fix-rounds/pr-7777.json" ]] \
+  || { echo "FAIL: worktree call wrote to worktree path" >&2; exit 1; }
+
 echo "PASS pr_fix_round_inc.test.sh"

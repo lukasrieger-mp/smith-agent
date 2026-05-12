@@ -43,7 +43,7 @@ if (( trigger == 1 )) && (( fix_delta != 0 || dismiss_delta != 0 )); then
   exit 1
 fi
 
-target_root=$(git rev-parse --show-toplevel)
+target_root=$(bash "$(dirname "$0")/resolve_target_root.sh")
 state_dir="$target_root/.smith/state/pr-fix-rounds"
 state_file="$state_dir/pr-$PR.json"
 mkdir -p "$state_dir"
