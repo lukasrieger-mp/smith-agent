@@ -78,7 +78,7 @@ grep -q "transition" "$TMP/acli.log" && { echo "FAIL: should NOT transition (alr
 # Label not present; remove should be a no-op
 grep -qF -e "--remove-labels" "$TMP/acli.log" && { echo "FAIL: should NOT remove (label absent)" >&2; exit 1; }
 
-# ===== Case 3: pr-fix-mode abort =====
+# ===== Case 3: fixer-mode abort =====
 git -C "$TARGET" checkout -q -b task/app-3333-baz develop
 git -C "$TARGET" commit --allow-empty -m "pr commit" -q
 git -C "$TARGET" push -q -u origin task/app-3333-baz
@@ -92,10 +92,10 @@ bash "$SCRIPT" 5050 >/dev/null
 
 # Worktree gone
 [[ ! -d ".smith/worktrees/5050" || ! -d ".smith/worktrees/app-3333" ]] \
-  || { echo "FAIL: pr-fix worktree not removed" >&2; exit 1; }
+  || { echo "FAIL: fixer-mode worktree not removed" >&2; exit 1; }
 # Branch on remote → should NOT delete local even if exists (we deleted it already, but the safety would have kicked in)
-# JIRA NOT touched (pr-fix mode never called claim)
-grep -q "transition" "$TMP/acli.log" && { echo "FAIL: pr-fix should not touch JIRA" >&2; exit 1; }
+# JIRA NOT touched (fixer mode never called claim)
+grep -q "transition" "$TMP/acli.log" && { echo "FAIL: fixer-mode should not touch JIRA" >&2; exit 1; }
 # active_smiths empty
 got=$(bash "${ROOT}/scripts/active_smiths.sh" count)
 assert_eq "0" "$got" "case3-active-empty"

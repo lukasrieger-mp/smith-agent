@@ -12,7 +12,7 @@
 #     "comments": [{"body":"...","author":{"login":"..."}}, ...]
 #   }
 #
-# Used by smith:pr-fix-mode to know what to address. The monitor
+# Used by smith-fixer to know what to address. The monitor
 # (monitor_pr_comments.sh) does its own thinner GraphQL fetch for
 # diff detection; this script is the full fetcher for the Smith
 # teammate's actual fix loop.

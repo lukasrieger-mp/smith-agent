@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Create a worktree on an EXISTING remote branch (the PR's head ref) at
-# .smith/worktrees/<key-lower>/. This is the PR-fix-mode counterpart of
+# .smith/worktrees/<key-lower>/. This is the fixer-pair counterpart of
 # make_worktree.sh — make_worktree creates a NEW branch from
 # origin/develop; this one checks out a branch that already exists on
-# the remote (because Smith pushed it earlier in ticket mode).
+# the remote (because Smith pushed it earlier in impl mode).
 #
 # Usage: checkout_pr_worktree.sh <TICKET-KEY> <BRANCH>
 #

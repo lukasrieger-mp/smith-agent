@@ -6,7 +6,8 @@
 # proceed.
 #
 # Why: Anderson must stay alive for the entire lifetime of a Smith
-# ticket / PR-fix cycle, across multiple gates. Left alone after one
+# ticket (impl pair, three gates) or one PR-fix round (fixer pair,
+# triage + diff). Left alone after one
 # mailbox round-trip, an LLM teammate hits a "I'm done here" point and
 # self-terminates, which strands Smith with no reviewer. The pair-spawn
 # verification on the lead side catches missing-from-the-start cases;
@@ -32,11 +33,11 @@ esac
 if (( is_anderson )); then
   cat >&2 <<'EOF'
 Do not go idle. Your job is to stay available for Smith's review
-requests across every gate of his pipeline (spec, plan, diff) — or
-for PR-fix-mode diff reviews. Smith may send another `review.request`
-at any moment. If you have no message to process right now, that is
-normal: wait. Only exit when you receive an explicit shutdown request
-from the lead.
+requests across every gate of his pipeline — spec, plan, diff for
+the impl pair, or triage and a final cumulative diff for the fixer
+pair. Smith may send another `review.request` at any moment. If you
+have no message to process right now, that is normal: wait. Only
+exit when you receive an explicit shutdown request from the lead.
 EOF
   exit 2
 fi

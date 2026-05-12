@@ -191,6 +191,22 @@ The lead pre-created your worktree via
   final diff gate.)
 - **No spawning nested teams.**
 
+## Cleanup contract
+
+Before exit — whether the outcome is `converged`, `continuing`, `stuck`,
+`degenerate`, or `error` — call:
+
+```
+bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh remove "smith-fixer-$pr_number"
+```
+
+This is in addition to the watchdog's outcome-handler call (the
+watchdog removes the pair when it receives your `smith.outcome`
+message). The two are belt-and-braces: if the watchdog never receives
+the outcome (e.g., session crash), your self-removal keeps the
+fixer-cap accurate. Idempotent — `remove` is a no-op if the entry
+isn't there.
+
 ## Pre-flight before any side effect
 
 Before any `gh`, `git push`, or `acli` write, you re-confirm:

@@ -13,8 +13,8 @@ was modified.
 ## Arguments
 
 - `$1` (required): the subject — either a JIRA ticket key (e.g.
-  `APP-1234`) for ticket-mode aborts, or a PR number (e.g. `4321`)
-  for PR-fix-mode aborts.
+  `APP-1234`) for impl-mode aborts, or a PR number (e.g. `4321`)
+  for fixer-mode aborts.
 
 Examples:
 
@@ -69,13 +69,13 @@ Examples:
      decides whether to clean them up manually)
    - Remove the brief at `.smith/briefs/<KEY>-brief.md`
    - Revert JIRA status from claim-status back to eligible-status
-     (ticket mode only, and only if status is currently claim-status)
-   - Remove the `smith-implementing` label (ticket mode only,
+     (impl mode only, and only if status is currently claim-status)
+   - Remove the `smith-implementing` label (impl mode only,
      idempotent)
    - Clear the active-smiths entry so the cap doesn't drift
    - Append an abort line to `.smith/log.txt`
 
-   For PR-fix mode, the JIRA revert is skipped (claim wasn't called),
+   For fixer mode, the JIRA revert is skipped (claim wasn't called),
    and the branch (which lives on the remote PR) is left alone.
 
 ## Output
@@ -85,7 +85,7 @@ exactly what was done, then a summary:
 
 ```
 Aborted Smith dispatch for $1.
-  Mode:    <ticket|pr-fix>
+  Mode:    <impl|fixer>
   Smith:   <smith_name> (shut down)
   Anderson: <anderson_name> (shut down)
   Local cleanup: <see lines above>

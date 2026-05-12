@@ -127,15 +127,16 @@ team-mechanics reference). The runtime topology has three roles:
   candidates appear, when PR reviewers leave comments, or when the kill
   switch is toggled. Reacts by dispatching teammates. Never edits code
   itself; never invokes pipeline skills directly.
-- **Mr. Smith teammate** — short-lived per-ticket Claude Code session,
-  defined by `agents/smith-impl.md`. Owns a worktree, drives the
-  claim/enrich/pipeline/PR steps inside its own fresh context. Two dispatch
-  modes (Section 8.3): *ticket mode* (full pipeline from scratch) and
-  *PR-fix mode* (address review comments on an existing draft PR).
+- **Mr. Smith teammate** — short-lived per-task Claude Code session. Two
+  pair roles (Section 8.3): the *impl Smith* (`agents/smith-impl.md`)
+  drives the full ticket pipeline from scratch (claim → enrich →
+  pipeline → PR); the *fixer Smith* (`agents/smith-fixer.md`) handles
+  one round of review comments on an already-open draft PR.
 - **Mr. Anderson teammate** — co-equal teammate spawned alongside each Smith,
-  defined by `agents/anderson-impl.md`. Adversarial reviewer: messages
-  Smith via the team mailbox at each pipeline gate. See Section 8 for the
-  collaborative critic loop.
+  defined by `agents/anderson-impl.md` (impl pair) or
+  `agents/anderson-fixer.md` (fixer pair). Adversarial reviewer:
+  messages Smith via the team mailbox at each pipeline gate. See
+  Section 8 for the collaborative critic loop.
 
 ### 5.1 System shape
 
@@ -153,20 +154,20 @@ team-mechanics reference). The runtime topology has three roles:
  watchdog       │  Event-driven: reacts to monitor notifications  │
  /smith:       ─►│                                                 │
  implement      │  On smith.jira.new_candidates:                  │
-                │     if active < 2: dispatch ONE Smith+Anderson  │
+                │     if active < 2: dispatch ONE impl pair       │
                 │  On smith.pr.new_comments:                      │
-                │     if active < 2: dispatch PR-fix Smith+Anderson│
+                │     if active < 2: dispatch ONE fixer pair      │
                 │  On smith.stop.requested/lifted:                │
                 │     pause/resume new dispatch                   │
                 │                                                 │
                 │  Owns: kill switches, .smith/ state, scheduling │
-                │  Cap:  max 2 concurrent Smiths (impl + pr-fix)  │
+                │  Cap:  max 2 concurrent Smiths (impl + fixer)   │
                 └───────┬───────────────────────────┬─────────────┘
                         │ team spawn               │ team spawn
                         ▼                          ▼
             ┌───────────────────────────┐    ┌───────────────────────────┐
-            │   Ticket-impl team        │    │   PR-fix team             │
-            │   (per active ticket)     │    │   (per PR-fix cycle)      │
+            │   Impl team               │    │   Fixer team              │
+            │   (per active ticket)     │    │   (per fix round on a PR) │
             │                           │    │                           │
             │  ┌─────┐    ┌──────────┐  │    │  ┌─────┐    ┌──────────┐ │
             │  │Smith│◄──►│Mr.Anderson│  │    │  │Smith│◄──►│Mr.Anderson│ │
@@ -196,10 +197,10 @@ during its lifetime. The pair returns a structured outcome to the lead
 | Discovery (JIRA scan) | `monitor_jira.sh` (background, 30 min poll) | n/a |
 | PR-comment detection | `monitor_pr_comments.sh` (background, 1 min poll) | n/a |
 | Kill-switch watch | `monitor_stop.sh` (background, 2 s poll) | n/a |
-| PR-fix execution | Spawned teammate pair (Smith + Anderson) on notification | shares the 2-cap below |
-| Ticket implementation | Spawned teammate pair (Smith + Anderson) on notification | shares the 2-cap below |
+| Fixer execution | Spawned fixer pair (smith-fixer + anderson-fixer) on notification | shares the 2-cap below |
+| Ticket implementation | Spawned impl pair (smith-impl + anderson-impl) on notification | shares the 2-cap below |
 
-**Hard ceiling: 2 active Smiths total.** Both ticket-impl and PR-fix Smiths
+**Hard ceiling: 2 active Smiths total.** Both impl and fixer Smiths
 count against this. Each Smith has an attached Anderson, so worst-case
 team size = 4 teammates (2 Smiths + 2 Andersons) plus the lead.
 
@@ -282,7 +283,7 @@ converging.
 
 | Limit | Value | Scope | Action on breach |
 |---|---|---|---|
-| Concurrent Smith teammates | 2 | Sum of ticket-impl + PR-fix Smiths across the whole team | Lead does not spawn additional Smiths; manual `/smith:implement` fails fast |
+| Concurrent Smith teammates | 2 | Sum of impl + fixer Smiths across the whole team | Lead does not spawn additional Smiths; manual `/smith:implement` fails fast |
 | New impl pickup per tick | 1 | Lead's per-tick rule (Section 5.3) | Lead defers additional candidates to next tick |
 | Critic rounds per gate | 3 | Each gate (spec, plan, diff) independently — measured in mailbox round-trips with Anderson | Escalate → WIP-stuck |
 | Total critic rounds per ticket | 9 implicit | 3 gates × 3 rounds | (derived from above) |
@@ -529,8 +530,8 @@ cover routine notifications, so adding comments would create noise rather than
 signal. All "where Smith got stuck" detail lives in the PR body on the
 WIP-stuck path (Section 10.3), not in JIRA.
 
-This is a strict rule: `smith:claim`, `smith:pr`, and Smith's PR-fix-mode
-workflow must not call `acli jira workitem comment` for routine state
+This is a strict rule: `smith:claim`, `smith:pr`, and the smith-fixer
+persona must not call `acli jira workitem comment` for routine state
 changes. The only label operations they perform are documented in 6.5;
 status transitions are limited to the one in 6.4.
 
@@ -577,7 +578,7 @@ lowercased, ASCII, hyphen-separated, capped at 40 chars. Encoded in
   `git fetch origin develop`).
 - On success: `smith:pr` pushes branch + opens draft PR.
 - On WIP-stuck: `smith:pr` still pushes branch + opens *WIP* draft PR.
-- After draft PR is open: PR-fix-mode Smiths only add commits; no rebase, no
+- After draft PR is open: fixer Smiths only add commits; no rebase, no
   force-push.
 - If `develop` has drifted by ≥ N commits since branch creation, one rebase
   attempt is allowed. On conflict → escalate to WIP-stuck.
@@ -709,29 +710,39 @@ request:
 
 Empty `findings` means "no high-confidence issues found — pass this gate."
 
-### 8.3 Smith's two dispatch modes
+### 8.3 Smith's two pair roles
 
-The same Smith persona (`agents/smith-impl.md`) handles two scenarios; the
-spawn prompt the lead builds tells Smith which mode he's in.
+Smith has two distinct personas — one per pair role. The watchdog picks
+the persona at spawn time based on the notification it's reacting to.
 
-**Ticket mode** — full pipeline from scratch.
-- Lead input: `{ticket: "APP-1234", dry_run: bool}`
+**Impl Smith** (`agents/smith-impl.md`) — full ticket pipeline from
+scratch. One per ticket, lives for the ticket's implementation only.
+- Lead input: `{mode: "impl", ticket: "APP-1234", worktree: "<path>", branch: "<task/...>", dry_run: bool, confident: bool, anderson_name: "anderson-impl-APP-1234"}`
 - Spawn prompt content includes: ticket key, target sprint, branch name, the
   acceptable claim-status workflow, fresh-worktree path, references to spec
   Section 8 sequence.
 - Output: structured outcome JSON (Section 8.5).
+- Pipeline: 3 gates (spec → plan → diff) with anderson-impl.
 
-**PR-fix mode** — address review comments on an existing draft PR.
-- Lead input: `{pr_number: 4321, branch: "task/app-1234-foo", worktree: ".smith/worktrees/app-1234/", unresolved_comments: [...]}`
-- Spawn prompt content includes: PR metadata, the unresolved comments JSON,
-  reference to the `pr-feedback-helper` skill, instruction to commit + push
-  fixes one thread at a time, respect the 5-cycles-per-thread cap.
-- Output: structured outcome JSON noting which threads were addressed and
-  which remain.
+**Fixer Smith** (`agents/smith-fixer.md`) — handles exactly one round
+of review feedback on an already-open draft PR and exits. Round-to-round
+sequencing is done by the watchdog (a fresh fixer pair per round), not
+by looping inside the session.
+- Lead input: `{mode: "fixer", pr_number: 4321, worktree: ".smith/worktrees/app-1234/", branch: "task/app-1234-foo", dry_run: bool, anderson_name: "anderson-fixer-PR-4321"}`
+- Spawn prompt content includes: PR metadata and the pointer to
+  `gh_pr_unresolved_comments.sh` (the persona fetches threads itself
+  rather than receiving them in the prompt — the monitor's snapshot
+  can be stale by spawn time).
+- Output: structured outcome JSON with `result: "converged" |
+  "continuing" | "stuck" | "degenerate" | "error"`. See
+  `agents/smith-fixer.md` for the per-round triage + outcome semantics.
+- Pipeline: triage round-trips per dismissal + one final diff gate
+  with anderson-fixer.
 
-Both modes use the same Anderson teammate as their critic — but only ticket
-mode has the 3-gate (spec/plan/diff) pipeline. PR-fix mode invokes Anderson at
-one gate only: review the diff of the fix commits before pushing.
+Both personas talk to a paired Anderson (`anderson-impl` or
+`anderson-fixer`). The two Andersons are differently tuned — impl
+reviews full artefacts (spec, plan, diff) while fixer reviews
+triage proposals and the final cumulative diff for one round.
 
 ### 8.4 Critic loop logic (mailbox-driven)
 
@@ -790,7 +801,7 @@ to the lead AND writes the same JSON to `.smith/log.txt`:
 {
   "type": "smith.outcome",
   "result": "success" | "stuck" | "error",
-  "mode": "ticket" | "pr-fix",
+  "mode": "impl" | "fixer",
   "ticket": "APP-1234",
   "branch": "task/app-1234-foo",
   "pr_url": "https://github.com/myposter-de/myposter-app/pull/4321",
@@ -921,10 +932,11 @@ Components partition by **execution context**: which session(s) load them.
 
 ### 11.0 Agent definitions
 
-#### 11.0.1 `agents/smith-impl.md` — Mr. Smith teammate
+#### 11.0.1 `agents/smith-impl.md` — Mr. Smith teammate (impl pair)
 
-- **Loaded by:** every Smith teammate spawned by the lead (both ticket-mode
-  and PR-fix-mode).
+- **Loaded by:** every impl-pair Smith teammate spawned by the lead.
+  Fixer-pair Smiths load `agents/smith-fixer.md` instead (see Section
+  8.3 for the two-persona split).
 - **Tools allowlist:** `Read, Write, Edit, NotebookEdit, Bash, Grep, Glob,
   WebFetch, Task` (Task lets Smith dispatch his own helper subagents like
   Explore — note: nested team spawning is not supported by Claude Code, and
@@ -1016,15 +1028,31 @@ against the previous poll, so notifications only fire on *change*.
   to committed locations, adds `needs-human-attention` PR label, adds
   `auto-impl-failed` JIRA label. **No JIRA comments on either path.**
 
-#### 11.2.5 `smith:pr-fix` (consumed inside PR-fix-mode Smith)
+#### 11.2.5 `agents/smith-fixer.md` (fixer-pair persona, not a skill)
 
-- **Loaded by:** PR-fix-mode Smith teammate only.
-- **Input:** PR number, branch, unresolved comments JSON (from spawn prompt).
-- **Output:** outcome JSON listing addressed vs unaddressed threads.
-- **Side effects:** invokes `pr-feedback-helper` to read comments; edits
-  files in the worktree; commits + pushes; increments per-thread cycle
-  counter in `.smith/state/pr-<num>.json`; tags PR `needs-human-attention`
-  after 5 cycles on any thread.
+The fixer workflow lives entirely in the smith-fixer persona — there is
+no `smith:pr-fix` skill. The per-round logic (triage → dismiss-or-fix →
+Anderson diff gate → commit → push → outcome) is described in
+`agents/smith-fixer.md` and exercised by the watchdog by spawning a
+fresh fixer pair on each `smith.pr.new_comments` notification.
+
+- **Loaded by:** fixer-pair Smith teammate only (via spawn prompt).
+- **Input:** PR number, branch, worktree path, anderson_name (from spawn
+  prompt). The persona fetches unresolved threads itself via
+  `scripts/gh_pr_unresolved_comments.sh`.
+- **Output:** outcome JSON (see `agents/smith-fixer.md`) — one of
+  `converged | continuing | stuck | degenerate | error`.
+- **Side effects:** triages each finding (fix / dismiss-not-applicable /
+  dismiss-not-worth-it) with anderson-fixer review of every dismissal;
+  resolves dismissed threads via `scripts/gh_resolve_review_thread.sh`;
+  edits files; runs the target's quality check; commits + pushes; on
+  `continuing` posts an `augment review` comment to re-trigger external
+  review; bumps the per-PR round counter in
+  `.smith/state/pr-fix-rounds/pr-<num>.json` via
+  `scripts/pr_fix_round_inc.sh` (round-level counter, not per-thread).
+- **Convergence cap:** `max_fix_rounds` (default 5) per PR. After that
+  the watchdog tags the PR `needs-human-attention` and stops
+  dispatching fixers for that PR until the operator resets state.
 
 ### 11.3 Shared scripts (under `scripts/`)
 
@@ -1381,12 +1409,14 @@ decompose into phases that can be built and verified independently:
    a single wip commit), push, draft PR with `needs-human-attention`
    label, JIRA label swap to `auto-impl-failed`. No JIRA comments
    anywhere (spec Section 6.6).
-6. **Phase 5 — PR-fix mode (Smith dispatch mode #2). ✅ DONE.** The
-   `agents/smith-impl.md` persona now has a live PR-fix workflow. New
-   scripts: `checkout_pr_worktree.sh` (checks out the PR's head ref
-   into a worktree, mirror of `make_worktree.sh` for existing remote
-   branches), `gh_pr_unresolved_comments.sh` (fetch + filter via
-   `gh pr view --json reviewThreads`), `pr_fix_round_inc.sh`
+6. **Phase 5 — Fixer pair (PR-fix workflow). ✅ DONE.** A dedicated
+   `agents/smith-fixer.md` persona (paired with `anderson-fixer`) now
+   handles one round of review feedback on an open Smith PR per
+   spawn; the watchdog re-dispatches a fresh fixer pair per round.
+   New scripts: `checkout_pr_worktree.sh` (checks out the PR's head
+   ref into a worktree, mirror of `make_worktree.sh` for existing
+   remote branches), `gh_pr_unresolved_comments.sh` (fetch + filter
+   via the GraphQL `reviewThreads` field), `pr_fix_round_inc.sh`
    (per-PR round counter; tags PR `needs-human-attention` after 5
    rounds per spec Section 5.5). The legacy `skills/pr-watch/` was
    removed — the `pr-comments` monitor (Section 5.6) superseded it.
@@ -1457,7 +1487,7 @@ modifications beyond the runtime state directory.
     write_brief.sh
     validate_anderson_reply.sh   ← Anderson schema validator (Phase 3)
     promote_smith_artifacts.sh   ← WIP-stuck artefact promotion (Phase 4)
-    gh_pr_unresolved_comments.sh ← PR-fix mode comment fetcher (Phase 5)
+    gh_pr_unresolved_comments.sh ← fixer-pair comment fetcher (Phase 5)
     pr_fix_round_inc.sh          ← per-PR round counter (Phase 5)
     active_smiths.sh             ← watchdog cap enforcement state (Phase 6)
     pick_top_candidate.sh        ← pick top eligible candidate (Phase 6)
@@ -1626,11 +1656,17 @@ Spawn an Anderson teammate (using the anderson-impl agent type) named
   Do not self-terminate.
 ```
 
-For PR-fix mode, the Smith spawn prompt instead includes
-`Mode: pr-fix`, the PR number, the worktree path (pre-existing from the
-ticket's original implementation), and the unresolved-comments JSON. Anderson
-is spawned the same way but is briefed to expect only a single diff-review
-gate, not three.
+For a fixer-pair dispatch, the watchdog spawns `smith-fixer` (not
+`smith-impl`) with a prompt that includes `Mode: fixer`, the PR number,
+the worktree path (pre-existing from the ticket's original
+implementation), the branch, `dry_run`, and
+`anderson_name: "anderson-fixer-PR-<N>"`. The persona itself fetches
+unresolved threads via `gh_pr_unresolved_comments.sh` at run time
+(rather than receiving them in the prompt — the monitor's snapshot can
+be stale by spawn time). The paired Anderson is spawned from
+`agents/anderson-fixer.md` and is briefed to expect triage proposals
+plus a single cumulative diff-review gate for the round, not the
+three-gate impl pipeline.
 
 ### 18.4 Task-list mapping
 

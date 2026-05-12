@@ -5,7 +5,7 @@
 # polling interval, then removes the file.
 #
 # Called by Smith after every `git push` (smith:pr's initial push and
-# smith:pr-fix-mode's per-cycle pushes). A push may trigger new
+# smith-fixer's per-round pushes). A push may trigger new
 # reviewer activity within minutes; we don't want the monitor sleeping
 # at the 30-min backoff interval through the response window.
 #
