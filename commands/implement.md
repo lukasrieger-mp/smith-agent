@@ -132,8 +132,8 @@ request to create a team with two teammates. Example phrasing:
 >
 > - First teammate uses agent type `smith-impl`, named `smith-impl-APP-XXXX`,
 >   with the spawn prompt below.
-> - Second teammate uses agent type `anderson`, named
->   `anderson-APP-XXXX`, with the spawn prompt below.
+> - Second teammate uses agent type `anderson-impl`, named
+>   `anderson-impl-APP-XXXX`, with the spawn prompt below.
 >
 > Both must persist for the lifetime of this ticket. Do not shut them
 > down on idle.
@@ -167,7 +167,7 @@ failure mode this paragraph exists to prevent.
 > Execute smith:claim, smith:enrich, smith:pipeline, smith:pr per spec Section 8.
 > Send {type: smith.outcome, ...} to the lead via mailbox when done.
 
-**Teammate 2 — Mr. Anderson**, agent type `anderson`, name `anderson-<ticket>`:
+**Teammate 2 — Mr. Anderson**, agent type `anderson-impl`, name `anderson-impl-<ticket>`:
 
 > You are reviewing Smith's work on $1.
 > Worktree: .smith/worktrees/<ticket-lowercased>/
@@ -181,7 +181,7 @@ failure mode this paragraph exists to prevent.
 
 **Verify both came up** before considering dispatch successful. After
 the two spawn calls, list active teammates and confirm you see both
-`smith-impl-<ticket>` and `anderson-<ticket>`. If either is missing, retry
+`smith-impl-<ticket>` and `anderson-impl-<ticket>`. If either is missing, retry
 that one spawn. If after retry one is still missing, do not let Smith
 proceed — tear down the half-spawned dispatch via `/smith:abort
 <ticket>` and report `{result: "error", reason: "teammate pair spawn
@@ -199,7 +199,7 @@ When it arrives, parse the result:
 - `success`: print a summary including PR URL, mode, log_entries.
 - `stuck`: print the reason and the path to the WIP-stuck PR (if any).
 - `error`: per spec Section 8.5, dispatch ONE retry with a fresh teammate
-  pair (new names: `smith-impl-<ticket>-retry`, `anderson-<ticket>-retry`).
+  pair (new names: `smith-impl-<ticket>-retry`, `anderson-impl-<ticket>-retry`).
   If the retry also returns error → escalate to final WIP-stuck.
 
 ## On dispatch failure

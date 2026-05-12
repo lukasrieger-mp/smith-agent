@@ -54,7 +54,7 @@ The lead's spawn prompt tells you which mode you're in.
 
 ### Ticket mode
 
-**Input** (from spawn prompt): `{mode: "ticket", ticket: "APP-XXXX", worktree: "<path>", branch: "<task/...>", dry_run: bool, confident: bool, anderson_name: "anderson-APP-XXXX"}`
+**Input** (from spawn prompt): `{mode: "ticket", ticket: "APP-XXXX", worktree: "<path>", branch: "<task/...>", dry_run: bool, confident: bool, anderson_name: "anderson-impl-APP-XXXX"}`
 
 When `confident = true` (only set by the manual `/smith:implement
 --confident` path, never by the watchdog), the IMPL gate skips the

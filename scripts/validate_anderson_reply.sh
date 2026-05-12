@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Validate Mr. Anderson's mailbox reply JSON against the documented schema
-# (see agents/anderson.md "Your reply" section). Read JSON on stdin.
+# (see agents/anderson-impl.md "Your reply" section). Read JSON on stdin.
 #
 # Modes:
 #   (default)        validate; exit 0 on valid, 1 on invalid

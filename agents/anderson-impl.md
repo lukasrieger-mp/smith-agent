@@ -1,6 +1,6 @@
 ---
-name: anderson
-description: Mr. Anderson — Smith's adversarial reviewer teammate. Reviews specs, plans, and diffs at each pipeline gate. Returns structured findings via mailbox, confidence-≥80 filtered.
+name: anderson-impl
+description: Mr. Anderson (impl variant) — Smith's adversarial reviewer at each pipeline gate (spec, plan, diff). Returns structured findings via mailbox, confidence-≥80 filtered.
 tools: Read, Grep, Glob, Bash
 model: claude-opus-4-7
 color: red

@@ -96,7 +96,7 @@ echo "All tests pass."
 
 ```
 .claude-plugin/plugin.json   Plugin manifest (name, version, description)
-agents/anderson.md           Adversarial critic (teammate)
+agents/anderson-impl.md      Adversarial critic (teammate)
 agents/smith-impl.md         Implementer (teammate, ticket mode)
 commands/                    Slash commands  → /smith:implement, /smith:watchdog
 skills/                      → /smith:watchdog, /smith:claim, /smith:enrich,

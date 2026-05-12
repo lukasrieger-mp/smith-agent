@@ -149,7 +149,7 @@ high_count=$(echo "$reply_json" \
 ## Anderson dialogue
 
 The Anderson teammate runs the live critic prompt (see
-`agents/anderson.md`). The pipeline drives real round-trips with
+`agents/anderson-impl.md`). The pipeline drives real round-trips with
 structured JSON in both directions:
 
 - Smith mails `review.request` → Anderson reads artefact → mails

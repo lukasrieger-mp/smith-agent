@@ -133,7 +133,7 @@ team-mechanics reference). The runtime topology has three roles:
   modes (Section 8.3): *ticket mode* (full pipeline from scratch) and
   *PR-fix mode* (address review comments on an existing draft PR).
 - **Mr. Anderson teammate** — co-equal teammate spawned alongside each Smith,
-  defined by `agents/anderson.md`. Adversarial reviewer: messages
+  defined by `agents/anderson-impl.md`. Adversarial reviewer: messages
   Smith via the team mailbox at each pipeline gate. See Section 8 for the
   collaborative critic loop.
 
@@ -650,7 +650,7 @@ team mailbox.
 
 ### 8.2 The Anderson teammate
 
-Defined at `agents/anderson.md` (~70 lines), spawned as a team member
+Defined at `agents/anderson-impl.md` (~70 lines), spawned as a team member
 alongside Smith (see [Agent Teams docs](https://code.claude.com/docs/en/agent-teams)).
 
 **Tools allowlist**: `Read, Grep, Glob, Bash` (read-only commands only —
@@ -932,7 +932,7 @@ Components partition by **execution context**: which session(s) load them.
   respects the never-touch list in Section 12.1; addresses Mr. Anderson by
   name in mailbox messages; argues back when warranted).
 
-#### 11.0.2 `agents/anderson.md` — Mr. Anderson teammate
+#### 11.0.2 `agents/anderson-impl.md` — Mr. Anderson teammate
 
 - **Loaded by:** every Anderson teammate spawned alongside a Smith.
 - **Tools allowlist:** `Read, Grep, Glob, Bash` (read-only commands only).
@@ -1416,8 +1416,8 @@ modifications beyond the runtime state directory.
   .claude-plugin/
     plugin.json                  { name: "smith", version: "0.1.0", description, author }
   agents/
-    anderson.md                  Mr. Anderson — adversarial reviewer teammate
-    smith.md                     Mr. Smith — implementer teammate (added in Phase 1.5)
+    anderson-impl.md             Mr. Anderson — adversarial reviewer teammate
+    smith-impl.md                Mr. Smith — implementer teammate (added in Phase 1.5)
   commands/
     implement.md                 → /smith:implement
     watchdog.md                  → /smith:watchdog
@@ -1608,8 +1608,8 @@ with this prompt:
   Execute `smith:claim`, `smith:enrich`, `smith:pipeline`, `smith:pr` per spec
   Section 8. Send {type: smith.outcome, ...} to the lead via mailbox when done.
 
-Spawn an Anderson teammate (using the anderson agent type) named
-"anderson-APP-1234" with this prompt:
+Spawn an Anderson teammate (using the anderson-impl agent type) named
+"anderson-impl-APP-1234" with this prompt:
   You are reviewing Smith's work on APP-1234.
   Worktree: .smith/worktrees/app-1234/
   Wait for review requests from "smith-impl-APP-1234" via mailbox.

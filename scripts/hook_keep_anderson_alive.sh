@@ -13,8 +13,8 @@
 # this hook catches the mid-run shutdown case.
 #
 # Available env vars (per Claude Code hook env):
-#   CLAUDE_TEAMMATE_NAME  — the teammate's name (e.g. anderson-app-5601)
-#   CLAUDE_TEAMMATE_TYPE  — the teammate's agent type (e.g. anderson)
+#   CLAUDE_TEAMMATE_NAME  — the teammate's name (e.g. anderson-impl-app-5601)
+#   CLAUDE_TEAMMATE_TYPE  — the teammate's agent type (e.g. anderson-impl)
 
 set -uo pipefail
 
@@ -22,8 +22,12 @@ name="${CLAUDE_TEAMMATE_NAME:-}"
 type="${CLAUDE_TEAMMATE_TYPE:-}"
 
 is_anderson=0
-[[ "$type" == "anderson" ]] && is_anderson=1
-[[ "$name" == anderson-* ]] && is_anderson=1
+case "$type" in
+  anderson-impl|anderson-fixer) is_anderson=1 ;;
+esac
+case "$name" in
+  anderson-impl-*|anderson-fixer-*) is_anderson=1 ;;
+esac
 
 if (( is_anderson )); then
   cat >&2 <<'EOF'
