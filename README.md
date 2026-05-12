@@ -4,9 +4,12 @@ A Claude Code plugin that autonomously picks up small JIRA tickets and drives
 them to a draft PR, with adversarial review by Mr. Anderson.
 
 Smith is built on Claude Code's [agent teams][teams] feature: a long-lived
-watchdog session (the team lead) coordinates short-lived per-ticket teammates
-— Mr. Smith (implementer) and Mr. Anderson (adversarial critic) — each in
-its own fresh context. Up to 2 Smith pairs active in parallel.
+watchdog session (the team lead) coordinates two short-lived teammate-pair
+flavours — an **impl pair** (`smith-impl` + `anderson-impl`) that drives a
+ticket from claim to draft PR, and a **fixer pair** (`smith-fixer` +
+`anderson-fixer`) that handles one round of PR review feedback. Each pair
+runs in its own fresh context, with separate concurrency caps (default 2
+each).
 
 See [`docs/spec.md`](docs/spec.md) for the full design. Implementation plans
 live in [`docs/plans/`](docs/plans/).
@@ -96,8 +99,10 @@ echo "All tests pass."
 
 ```
 .claude-plugin/plugin.json   Plugin manifest (name, version, description)
-agents/anderson-impl.md      Adversarial critic (teammate)
-agents/smith-impl.md         Implementer (teammate, ticket mode)
+agents/smith-impl.md         Implementer (impl-pair teammate, ticket mode)
+agents/anderson-impl.md      Adversarial critic (impl-pair teammate)
+agents/smith-fixer.md        Per-round PR-fix triager (fixer-pair teammate)
+agents/anderson-fixer.md     Dismissal validator (fixer-pair teammate)
 commands/                    Slash commands  → /smith:implement, /smith:watchdog
 skills/                      → /smith:watchdog, /smith:claim, /smith:enrich,
                                 /smith:pipeline, /smith:pr, /smith:pr-watch
@@ -121,27 +126,43 @@ docs/plans/                  Historical build plans (one per phase)
    from inside a target repo
 2. Operator invokes `/smith:watchdog` once (or `/smith:watchdog --pr-only`
    for PR-fix-only mode) — monitors begin polling
-3. From this point: when a new eligible JIRA candidate appears, or
-   reviewer comments arrive on a Smith-authored PR, the watchdog
-   dispatches a Smith+Anderson teammate pair within the 2-cap
-4. Smith implements the ticket (or addresses comments) with Anderson
-   critiquing at each gate, ending with a draft PR
+3. From this point: when a new eligible JIRA candidate appears the
+   watchdog dispatches an impl pair; when reviewer comments arrive on
+   a Smith-authored PR it dispatches a fixer pair. Each pair runs
+   within its own concurrency cap.
+4. Smith implements the ticket (impl pair) or triages and addresses
+   one round of comments (fixer pair) with Anderson critiquing along
+   the way.
 
-Both dispatch modes are live:
+Two distinct teammate-pair roles drive everything:
 
-- **Ticket mode** — claim → enrich → pipeline (with 3-gate Anderson
-  critic) → PR open (success or WIP-stuck)
-- **PR-fix mode** — checkout PR worktree → fetch unresolved threads →
-  fix each (cap 5/thread) → Anderson diff review → push
+- **Impl pair** (`smith-impl` + `anderson-impl`) — implements one
+  ticket end-to-end: claim → enrich → pipeline (with 3-gate Anderson
+  critic) → open draft PR with `augment review` triggered.
+- **Fixer pair** (`smith-fixer` + `anderson-fixer`) — handles one
+  round of PR review feedback (Augment-bot-driven or human-reviewer-driven).
+  Triages findings, applies fixes or dismisses with Anderson-validated
+  justification, pushes, re-triggers Augment OR converges.
+
+The fixer dispatch is **separate** from impl dispatch — they have
+their own concurrency caps (`max_concurrent_impl_smiths` and
+`max_concurrent_fixer_smiths`, both default 2). Each PR has its own
+round counter (`max_fix_rounds`, default 5). On convergence (a round
+that produced zero fix-class findings), the fixer cleans up per-PR
+state and posts a summary comment; on hitting the round cap, the
+watchdog escalates the PR with the `needs-human-attention` label.
 
 The watchdog session reacts to monitor notifications by:
-- Counting active pairs via `active_smiths.sh count`
-- Picking top eligible JIRA key via `pick_top_candidate.sh`
+- Counting active pairs per role via `active_smiths.sh count <role>`
+- Picking top eligible JIRA key via `pick_top_candidate.sh` (impl path)
+- Reading the per-PR round counter before fixer dispatch
 - Spawning the teammate pair via the agent-teams API
 - Registering the pair in `active_smiths.sh` so the cap holds
 
 Operator overrides: `/smith:implement APP-XXXX` for a manual dispatch;
-`touch .smith/STOP` for a soft kill switch (~2 sec response).
+`touch .smith/STOP` for a soft kill switch (~2 sec response); remove
+the `needs-human-attention` label (or delete the per-PR round-counter
+file) to revive a capped-out fix loop.
 
 Known gap: the brief's "Suspected affected files" section is a static
 placeholder. A follow-up could populate it via an Explore subagent

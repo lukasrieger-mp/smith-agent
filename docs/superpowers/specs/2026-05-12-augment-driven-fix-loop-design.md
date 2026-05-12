@@ -329,9 +329,7 @@ is expensive deep-think with the full pipeline; fixer is short
 triage-and-patch.
 
 `scripts/active_smiths.sh` gains a `role` field on the add command:
-`active_smiths.sh add <smith> <anderson> <impl|fixer-round|fixer-pr-fix> <subject>`.
-(The existing `pr-fix` role from human-comment-driven dispatches stays
-for backward compat — see "Existing PR-fix mode" below.)
+`active_smiths.sh add <smith> <anderson> <impl|fixer> <subject>`.
 
 ### Augment silence
 

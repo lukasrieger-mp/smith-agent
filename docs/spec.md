@@ -215,20 +215,25 @@ line from the corresponding monitor, parsed as JSON by the agent.
 
 ```
 on smith.jira.new_candidates {keys: [...]}:
-  active = count of Smith teammates currently running (not idle)
-  cap    = config.max_concurrent_smiths (default 2)
+  active = count of impl-pair Smith teammates currently running
+  cap    = config.max_concurrent_impl_smiths (default 2)
   if smith_stop_active: return  # paused
   if active >= cap: return       # full; the candidate stays eligible
                                  # and the next notification will pick it up
   # Pick highest-priority key from `keys` per Section 6 ordering (sprint,
   # priority DESC, created ASC). Pull additional context via jira_scan.
-  spawn { smith (ticket mode), anderson } pair for chosen key
+  spawn { smith-impl, anderson-impl } pair for chosen key
 
 on smith.pr.new_comments {pr, new_count, branch}:
+  active = count of fixer-pair Smith teammates currently running
+  cap    = config.max_concurrent_fixer_smiths (default 2)
   if smith_stop_active: return
   if active >= cap: return  # PR is queued; next notification will retry
-  if there's already a PR-fix Smith working on this PR: return
-  spawn { smith (pr-fix mode), anderson } pair for the PR
+  if rounds[pr] >= config.max_fix_rounds: escalate, do not dispatch
+  if there's already a fixer Smith working on this PR: return
+  spawn { smith-fixer, anderson-fixer } pair for the PR
+  # See docs/superpowers/specs/2026-05-12-augment-driven-fix-loop-design.md
+  # for the per-PR round-counter + convergence logic.
 
 on smith.stop.requested:
   smith_stop_active = true
@@ -440,10 +445,11 @@ seed the per-target `.smith/config.json`. Once that file exists, it's
 authoritative — to change a value later, the operator edits `.smith/config.json`
 in the target or deletes it to re-seed from current userConfig.
 
-Smith-internal limits (`max_concurrent_smiths`, `max_critic_rounds`,
-`max_pr_fix_cycles`, `build_wallclock_minutes`) are intentionally not
-exposed via `userConfig` — they're load-bearing safety ceilings, not
-per-team preferences.
+Smith-internal limits (`max_concurrent_impl_smiths`,
+`max_concurrent_fixer_smiths`, `max_critic_rounds`, `max_fix_rounds`,
+`build_wallclock_minutes`) are intentionally not exposed via
+`userConfig` — they're load-bearing safety ceilings, not per-team
+preferences.
 
 #### 5.8.1 Caveat — `--plugin-dir` does not trigger the userConfig prompt
 
