@@ -11,7 +11,7 @@ set -euo pipefail
 
 KEY="${1:?usage: smith_config.sh <key>}"
 
-home="${SMITH_HOME:-$(git rev-parse --show-toplevel)/.smith}"
+home="${SMITH_HOME:-$(bash "$(dirname "$0")/resolve_target_root.sh")/.smith}"
 config="$home/config.json"
 
 # Target repo is the parent of $home (since $home == <target>/.smith).

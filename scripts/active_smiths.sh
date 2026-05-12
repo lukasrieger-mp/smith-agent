@@ -31,7 +31,7 @@ set -euo pipefail
 
 CMD="${1:-}"
 
-target_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
+target_root=$(bash "$(dirname "$0")/resolve_target_root.sh" 2>/dev/null) || {
   echo "active_smiths: not inside a git repo" >&2; exit 1
 }
 state_dir="$target_root/.smith/state"

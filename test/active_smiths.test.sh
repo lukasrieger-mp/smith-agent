@@ -92,4 +92,21 @@ fi
 if bash "$SCRIPT" bogus 2>/dev/null; then echo "FAIL: bogus subcommand" >&2; exit 1; fi
 if bash "$SCRIPT" 2>/dev/null; then echo "FAIL: no subcommand" >&2; exit 1; fi
 
+# Worktree-mode: calls from inside a linked worktree must write to the MAIN
+# target repo's state file (the watchdog reads from there), not to a
+# worktree-local .smith/state path. Regression test for the same class of
+# bug fixed in 1fe170d for pr_fix_round_inc.sh.
+( cd "$TMP" && git worktree add -q -b task/wt "$TMP/.smith/worktrees/app-7777" )
+( cd "$TMP/.smith/worktrees/app-7777" && \
+  bash "$SCRIPT" add smith-impl-WT-7777 anderson-impl-WT-7777 impl WT-7777 )
+[[ -f "$TMP/.smith/state/active-smiths.json" ]] \
+  || { echo "FAIL: worktree call wrote to wrong location" >&2; exit 1; }
+[[ ! -f "$TMP/.smith/worktrees/app-7777/.smith/state/active-smiths.json" ]] \
+  || { echo "FAIL: worktree call wrote to worktree-local path" >&2; exit 1; }
+# The state must be visible from the main repo too.
+( cd "$TMP" && bash "$SCRIPT" has-subject WT-7777 ) \
+  || { echo "FAIL: worktree-written subject not visible from main repo" >&2; exit 1; }
+# Restore state so this addition stays self-contained.
+( cd "$TMP" && bash "$SCRIPT" remove smith-impl-WT-7777 )
+
 echo "PASS active_smiths.test.sh"

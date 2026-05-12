@@ -81,4 +81,19 @@ got=$( CLAUDE_PLUGIN_OPTION_JIRA_PROJECT_KEY=OTHER \
        SMITH_HOME="$TMP/.smith" bash "$SCRIPT" jira_project_key )
 assert_eq "BACK" "$got" "userconfig-not-applied-after-create"
 
+# Worktree-mode: when called from inside a linked worktree WITHOUT
+# SMITH_HOME, the script must resolve to the MAIN target's .smith/config.json
+# instead of auto-creating a fresh defaults file at the worktree-local path.
+# Regression test for the same class of bug fixed in 1fe170d.
+rm -rf "$TMP/.smith" "$TMP/.gitignore"
+# Initialise config at the main target first.
+( cd "$TMP" && bash "$SCRIPT" max_concurrent_impl_smiths >/dev/null )
+[[ -f "$TMP/.smith/config.json" ]] || { echo "FAIL: main config not created" >&2; exit 1; }
+# Now create a worktree and call the script from inside it.
+( cd "$TMP" && git worktree add -q -b task/wt "$TMP/.smith/worktrees/app-7777" )
+got=$( cd "$TMP/.smith/worktrees/app-7777" && bash "$SCRIPT" max_concurrent_impl_smiths )
+assert_eq "2" "$got" "config read from worktree returns main-repo value"
+[[ ! -f "$TMP/.smith/worktrees/app-7777/.smith/config.json" ]] \
+  || { echo "FAIL: worktree call created a worktree-local config" >&2; exit 1; }
+
 echo "PASS smith_config.test.sh"
