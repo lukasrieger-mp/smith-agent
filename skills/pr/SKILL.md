@@ -73,15 +73,27 @@ green. Open a normal draft PR.
      --label smith-authored
    ```
    Capture the PR URL from `gh`'s stdout.
-6. Remove the `smith-implementing` JIRA label:
+6. **Trigger the Augment review bot.** Post a comment on the new PR
+   to start the autonomous review loop. The pr-comments monitor will
+   surface Augment's findings within ~3–5 minutes and the watchdog
+   will dispatch a smith-fixer + anderson-fixer pair to handle them:
+   ```
+   gh pr comment "$pr_number" --body "augment review"
+   ```
+   Also kick the pr-comments monitor so its cadence resets to the
+   active interval:
+   ```
+   bash $SMITH_PLUGIN_ROOT/scripts/pr_comments_reset.sh
+   ```
+7. Remove the `smith-implementing` JIRA label:
    ```
    acli jira workitem edit --key "$ticket" --label-remove smith-implementing
    ```
-7. Append log:
+8. Append log:
    ```
    <ts> | smith:pr | $ticket | success-pr | url=<url> branch=$branch
    ```
-8. Return the PR URL to the caller; populate the outcome JSON's
+9. Return the PR URL to the caller; populate the outcome JSON's
    `pr_url` field.
 
 ### Path B — WIP-stuck
@@ -130,6 +142,8 @@ human will need.
      --label smith-authored \
      --label needs-human-attention
    ```
+   Note: do NOT post "augment review" — this PR is being handed to a
+   human. The needs-human-attention label is the signal.
 7. **Swap the JIRA labels**:
    ```
    acli jira workitem edit --key "$ticket" \
@@ -165,6 +179,8 @@ every external side effect:
 - Don't touch JIRA labels
 - Don't invoke `promote_smith_artifacts.sh` (the wip commit it makes is
   also a side effect)
+- Don't post "augment review" comment
+- Don't kick pr_comments_reset.sh
 
 Instead, log the intended actions to `<target>/.smith/log.txt`:
 
@@ -173,6 +189,7 @@ Instead, log the intended actions to `<target>/.smith/log.txt`:
 <ts> | smith:pr | $ticket | would-create-draft-pr | title=<title>
 <ts> | smith:pr | $ticket | would-label-pr | labels=smith-authored
 <ts> | smith:pr | $ticket | would-remove-jira-label | label=smith-implementing
+<ts> | smith:pr | $ticket | would-trigger-augment | pr=<pr_number>
 ```
 
 …and return `dry-run://pr/$ticket` as the PR URL in your outcome JSON.
