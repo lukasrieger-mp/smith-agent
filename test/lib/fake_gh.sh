@@ -42,13 +42,18 @@ case "$args" in
     cat "$SMITH_FAKE_GH_PR_LIST_FIXTURE"
     ;;
   "api graphql"*)
-    # Extract the integer from `-F number=<N>`. Use grep so multi-line
-    # query strings don't trip up word-splitting.
+    # Two flavors: read-queries (have `-F number=<N>` and want a fixture)
+    # and mutations (no `number=`, just need to succeed silently — the
+    # test grep'ing the log is the actual assertion).
     pr_num=$(printf '%s' "$args" | grep -oE 'number=[0-9]+' | tail -1 | sed 's/number=//')
-    [[ -n "$pr_num" ]] || { echo "fake-gh: could not parse number= from: $args" >&2; exit 99; }
-    fixture="${SMITH_FAKE_GH_PR_VIEW_DIR:-/no/such/dir}/pr-$pr_num.json"
-    [[ -f "$fixture" ]] || { echo "fake-gh: no fixture at $fixture" >&2; exit 99; }
-    cat "$fixture"
+    if [[ -n "$pr_num" ]]; then
+      fixture="${SMITH_FAKE_GH_PR_VIEW_DIR:-/no/such/dir}/pr-$pr_num.json"
+      [[ -f "$fixture" ]] || { echo "fake-gh: no fixture at $fixture" >&2; exit 99; }
+      cat "$fixture"
+    else
+      # Mutation-style call: nothing to echo, success is enough.
+      exit 0
+    fi
     ;;
   "pr create"*)
     # Already logged at top; pretend success.
