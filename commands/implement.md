@@ -48,7 +48,7 @@ Examples:
    If this fails, abort with the script's error message. Do not continue.
 3. Read the cap and active-Smith count:
    ```
-   max=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_smiths)
+   max=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_impl_smiths)
    ```
    Count current active Smith teammates by checking your team's task list
    for in-progress tasks. If `active >= max`, abort with message:

@@ -40,10 +40,16 @@ assert_eq "/tmp/other" "$got" "override"
 got=$(SMITH_HOME="$TMP/.smith" bash "$SCRIPT" polling_minutes)
 assert_eq "45" "$got" "polling"
 
-# max_concurrent_smiths key present in defaults (2 per spec Section 5.5)
+# New keys after the split (per Augment-driven fix loop plan).
 rm -rf "$TMP/.smith"
-got=$(SMITH_HOME="$TMP/.smith" bash "$SCRIPT" max_concurrent_smiths)
-assert_eq "2" "$got" "max-concurrent-smiths-default"
+got=$(SMITH_HOME="$TMP/.smith" bash "$SCRIPT" max_concurrent_impl_smiths)
+assert_eq "2" "$got" "max_concurrent_impl_smiths default"
+
+got=$(SMITH_HOME="$TMP/.smith" bash "$SCRIPT" max_concurrent_fixer_smiths)
+assert_eq "2" "$got" "max_concurrent_fixer_smiths default"
+
+got=$(SMITH_HOME="$TMP/.smith" bash "$SCRIPT" max_fix_rounds)
+assert_eq "5" "$got" "max_fix_rounds default"
 
 # Unknown key -> non-zero
 if SMITH_HOME="$TMP/.smith" bash "$SCRIPT" no_such_key 2>/dev/null; then

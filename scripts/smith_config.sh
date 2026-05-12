@@ -53,7 +53,9 @@ if [[ ! -f "$config" ]]; then
   cat > "$config" <<JSON
 {
   "target_repo": "$target_repo",
-  "max_concurrent_smiths": 2,
+  "max_concurrent_impl_smiths": 2,
+  "max_concurrent_fixer_smiths": 2,
+  "max_fix_rounds": 5,
   "polling_minutes": $default_polling_minutes,
   "jira_project_key": "$default_jira_project_key",
   "story_points_field": "$default_sp_field",

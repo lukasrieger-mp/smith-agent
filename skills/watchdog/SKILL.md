@@ -58,7 +58,7 @@ if smith_stop_active: log "ignored (stopped)"; return
 mode=$(cat .smith/state/watchdog-mode 2>/dev/null || echo full)
 if [[ "$mode" == "pr-only" ]]: log "ignored (pr-only)"; return
 active=$(bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh count)
-max=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_smiths)
+max=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_impl_smiths)
 if [[ $active -ge $max ]]: log "ignored (cap $active/$max)"; return
 
 # Fetch fresh candidates (notification keys may be stale by now)
@@ -79,7 +79,7 @@ dispatch_ticket_mode "$key"
 ```
 if smith_stop_active: log "ignored (stopped)"; return
 active=$(bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh count)
-max=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_smiths)
+max=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_impl_smiths)
 if [[ $active -ge $max ]]: log "ignored (cap $active/$max)"; return
 
 # Is a Smith already on this PR?
