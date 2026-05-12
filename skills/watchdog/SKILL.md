@@ -71,7 +71,7 @@ key=$(echo "$candidates" \
 
 # Dispatch: follow the /smith:implement command's flow exactly,
 # without the manual --dry-run option (default: live)
-dispatch_ticket_mode "$key"
+dispatch_impl_mode "$key"
 ```
 
 ### On `{"type": "smith.pr.new_comments", "pr": N, "new_count": M, "branch": "..."}`
@@ -121,14 +121,14 @@ no Anderson at the first review gate. The agent-teams flag must be
 enabled (the watchdog command's pre-flight verifies this; without it,
 the dispatch will silently degrade).
 
-### `dispatch_ticket_mode <key>`
+### `dispatch_impl_mode <key>`
 
 1. Run `/smith:implement <key>`'s pre-flight (assert_target_repo,
    acli verify, classify_platform) inline. If pre-flight rejects,
    log and return.
 2. Compute branch name with `make_branch_name.sh`.
 3. Create the worktree with `make_worktree.sh <key> <branch>`.
-4. Spawn the teammate pair (`smith-<key>`, `anderson-<key>`) via the
+4. Spawn the teammate pair (`smith-impl-<key>`, `anderson-impl-<key>`) via the
    agent-teams API. Spawn prompt per spec Section 18.3, mode=ticket.
    **Both spawns are required.** After spawning, list active teammates
    and confirm both names came up — a missing Anderson means Smith
@@ -139,9 +139,9 @@ the dispatch will silently degrade).
 5. Register the pair:
    ```
    bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh add \
-        "smith-$key" "anderson-$key" ticket "$key"
+        "smith-impl-$key" "anderson-impl-$key" impl "$key"
    ```
-6. Log: `<ts> | watchdog | dispatch.ticket | key=$key`
+6. Log: `<ts> | watchdog | dispatch.impl | key=$key`
 
 ### `dispatch_pr_fix_mode <pr> <branch>`
 
@@ -185,9 +185,9 @@ Append one line per notification AND per dispatch decision (including
 Examples:
 ```
 2026-05-11T14:32:00Z | watchdog | smith.jira.new_candidates | keys=APP-5601; chose APP-5601
-2026-05-11T14:32:01Z | watchdog | dispatch.ticket | key=APP-5601
+2026-05-11T14:32:01Z | watchdog | dispatch.impl | key=APP-5601
 2026-05-11T15:14:23Z | watchdog | smith.pr.new_comments | pr=4321 new_count=2; ignored (cap 2/2)
-2026-05-11T15:30:00Z | watchdog | smith.outcome | smith-APP-5601 result=success pr=https://github.com/...
+2026-05-11T15:30:00Z | watchdog | smith.outcome | smith-impl-APP-5601 result=success pr=https://github.com/...
 ```
 
 ## Operational caveats
@@ -203,7 +203,7 @@ handles spawn-and-track). The watchdog's correctness depends on:
   idle — without that, `active_smiths.sh remove` is never called and
   the entry leaks until the session ends
 
-Both are documented as Smith's contract (`agents/smith.md` "Outcome
+Both are documented as Smith's contract (`agents/smith-impl.md` "Outcome
 JSON schema"). The schema validator and the log line gate help catch
 drift. A future iteration could add a `TeammateIdle` hook to force
 cleanup; that's flagged as future work in spec Section 5.7.

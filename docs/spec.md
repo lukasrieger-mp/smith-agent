@@ -128,7 +128,7 @@ team-mechanics reference). The runtime topology has three roles:
   switch is toggled. Reacts by dispatching teammates. Never edits code
   itself; never invokes pipeline skills directly.
 - **Mr. Smith teammate** — short-lived per-ticket Claude Code session,
-  defined by `agents/smith.md`. Owns a worktree, drives the
+  defined by `agents/smith-impl.md`. Owns a worktree, drives the
   claim/enrich/pipeline/PR steps inside its own fresh context. Two dispatch
   modes (Section 8.3): *ticket mode* (full pipeline from scratch) and
   *PR-fix mode* (address review comments on an existing draft PR).
@@ -705,7 +705,7 @@ Empty `findings` means "no high-confidence issues found — pass this gate."
 
 ### 8.3 Smith's two dispatch modes
 
-The same Smith persona (`agents/smith.md`) handles two scenarios; the
+The same Smith persona (`agents/smith-impl.md`) handles two scenarios; the
 spawn prompt the lead builds tells Smith which mode he's in.
 
 **Ticket mode** — full pipeline from scratch.
@@ -915,7 +915,7 @@ Components partition by **execution context**: which session(s) load them.
 
 ### 11.0 Agent definitions
 
-#### 11.0.1 `agents/smith.md` — Mr. Smith teammate
+#### 11.0.1 `agents/smith-impl.md` — Mr. Smith teammate
 
 - **Loaded by:** every Smith teammate spawned by the lead (both ticket-mode
   and PR-fix-mode).
@@ -1376,7 +1376,7 @@ decompose into phases that can be built and verified independently:
    label, JIRA label swap to `auto-impl-failed`. No JIRA comments
    anywhere (spec Section 6.6).
 6. **Phase 5 — PR-fix mode (Smith dispatch mode #2). ✅ DONE.** The
-   `agents/smith.md` persona now has a live PR-fix workflow. New
+   `agents/smith-impl.md` persona now has a live PR-fix workflow. New
    scripts: `checkout_pr_worktree.sh` (checks out the PR's head ref
    into a worktree, mirror of `make_worktree.sh` for existing remote
    branches), `gh_pr_unresolved_comments.sh` (fetch + filter via
@@ -1597,14 +1597,14 @@ When the lead spawns a Smith+Anderson pair for a ticket, it issues two team
 spawn requests:
 
 ```
-Spawn a Smith teammate (using the smith agent type) named "smith-APP-1234"
+Spawn a Smith teammate (using the smith-impl agent type) named "smith-impl-APP-1234"
 with this prompt:
   Mode: ticket
   Ticket: APP-1234
   Worktree: .smith/worktrees/app-1234/
   Branch (will be created by `smith:claim`): task/app-1234-<slug>
   Dry-run: false
-  Your Anderson is "anderson-APP-1234"; address review requests to him.
+  Your Anderson is "anderson-impl-APP-1234"; address review requests to him.
   Execute `smith:claim`, `smith:enrich`, `smith:pipeline`, `smith:pr` per spec
   Section 8. Send {type: smith.outcome, ...} to the lead via mailbox when done.
 
@@ -1612,7 +1612,7 @@ Spawn an Anderson teammate (using the anderson agent type) named
 "anderson-APP-1234" with this prompt:
   You are reviewing Smith's work on APP-1234.
   Worktree: .smith/worktrees/app-1234/
-  Wait for review requests from "smith-APP-1234" via mailbox.
+  Wait for review requests from "smith-impl-APP-1234" via mailbox.
   Per spec Section 8.2, only report findings at confidence ≥ 80.
   Reply with the documented JSON schema.
   Stay alive until the lead sends a shutdown request — Smith sends one

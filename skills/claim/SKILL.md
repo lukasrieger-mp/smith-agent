@@ -44,7 +44,7 @@ acli jira auth status >/dev/null && gh auth status >/dev/null
 
 If any pre-flight fails, return immediately with
 `{result: "stuck", reason: "<concrete failure>"}` per the Smith persona
-(`agents/smith.md`) outcome contract.
+(`agents/smith-impl.md`) outcome contract.
 
 ## Race-condition guard
 

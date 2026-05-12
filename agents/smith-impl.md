@@ -1,6 +1,6 @@
 ---
-name: smith
-description: Mr. Smith — implementer teammate, ticket or PR-fix mode. Drives the pipeline in his worktree; coordinates with Anderson via mailbox; returns outcome JSON.
+name: smith-impl
+description: Mr. Smith (impl variant) — ticket implementer teammate. Runs claim → enrich → pipeline → smith:pr in his worktree; coordinates with Anderson via mailbox; returns outcome JSON.
 tools: Read, Write, Edit, NotebookEdit, Bash, Grep, Glob, WebFetch, Task
 model: claude-opus-4-7
 color: blue
@@ -193,7 +193,7 @@ bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh remove "<your-spawn-name>"
 
 This removes you from the lead's active-pair tally so the cap doesn't
 drift. Your spawn name is in your spawn prompt
-(`smith-<ticket>` for ticket mode or `smith-pr-<N>` for PR-fix mode).
+(`smith-impl-<ticket>` for ticket mode or `smith-pr-<N>` for PR-fix mode).
 
 ## Never do
 

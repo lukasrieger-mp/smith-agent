@@ -130,7 +130,7 @@ request to create a team with two teammates. Example phrasing:
 
 > Create an agent team with two teammates for ticket APP-XXXX:
 >
-> - First teammate uses agent type `smith`, named `smith-APP-XXXX`,
+> - First teammate uses agent type `smith-impl`, named `smith-impl-APP-XXXX`,
 >   with the spawn prompt below.
 > - Second teammate uses agent type `anderson`, named
 >   `anderson-APP-XXXX`, with the spawn prompt below.
@@ -155,7 +155,7 @@ section. The `Agent` tool is always available regardless of whether
 agent-teams is enabled; you can reach for it by reflex. That is the
 failure mode this paragraph exists to prevent.
 
-**Teammate 1 — Mr. Smith**, agent type `smith`, name `smith-<ticket>`:
+**Teammate 1 — Mr. Smith**, agent type `smith-impl`, name `smith-impl-<ticket>`:
 
 > Mode: ticket
 > Ticket: $1
@@ -163,7 +163,7 @@ failure mode this paragraph exists to prevent.
 > Branch: $branch
 > Dry-run: ${DRY_RUN:-false}
 > Confident: ${CONFIDENT:-false}
-> Your Anderson is: anderson-<ticket>
+> Your Anderson is: anderson-impl-<ticket>
 > Execute smith:claim, smith:enrich, smith:pipeline, smith:pr per spec Section 8.
 > Send {type: smith.outcome, ...} to the lead via mailbox when done.
 
@@ -171,7 +171,7 @@ failure mode this paragraph exists to prevent.
 
 > You are reviewing Smith's work on $1.
 > Worktree: .smith/worktrees/<ticket-lowercased>/
-> Wait for review requests from smith-<ticket> via mailbox.
+> Wait for review requests from smith-impl-<ticket> via mailbox.
 > Per spec Section 8.2, only report findings at confidence >= 80.
 > Reply with the documented JSON schema for each gate (mode=spec, mode=plan, mode=diff).
 > **Stay alive until the lead sends you a shutdown request.** Smith
@@ -181,7 +181,7 @@ failure mode this paragraph exists to prevent.
 
 **Verify both came up** before considering dispatch successful. After
 the two spawn calls, list active teammates and confirm you see both
-`smith-<ticket>` and `anderson-<ticket>`. If either is missing, retry
+`smith-impl-<ticket>` and `anderson-<ticket>`. If either is missing, retry
 that one spawn. If after retry one is still missing, do not let Smith
 proceed — tear down the half-spawned dispatch via `/smith:abort
 <ticket>` and report `{result: "error", reason: "teammate pair spawn
@@ -199,7 +199,7 @@ When it arrives, parse the result:
 - `success`: print a summary including PR URL, mode, log_entries.
 - `stuck`: print the reason and the path to the WIP-stuck PR (if any).
 - `error`: per spec Section 8.5, dispatch ONE retry with a fresh teammate
-  pair (new names: `smith-<ticket>-retry`, `anderson-<ticket>-retry`).
+  pair (new names: `smith-impl-<ticket>-retry`, `anderson-<ticket>-retry`).
   If the retry also returns error → escalate to final WIP-stuck.
 
 ## On dispatch failure
