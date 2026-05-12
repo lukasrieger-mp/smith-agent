@@ -78,16 +78,11 @@ dispatch_impl_mode "$key"
 
 ```
 if smith_stop_active: log "ignored (stopped)"; return
-active=$(bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh count)
-max=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_impl_smiths)
-if [[ $active -ge $max ]]: log "ignored (cap $active/$max)"; return
 
-# Is a Smith already on this PR?
-if bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh has-subject "$N" 2>/dev/null:
-  log "ignored (already in flight)"; return
-
-# Dispatch PR-fix mode
-dispatch_pr_fix_mode "$N" "$branch"
+# Dispatch fixer mode — it does its own cap check, round-cap check,
+# and in-flight check (separate from impl). The handler here just
+# routes the notification.
+dispatch_fixer_mode "$N" "$branch"
 ```
 
 ### On `{"type": "smith.stop.requested"}`
@@ -143,23 +138,71 @@ the dispatch will silently degrade).
    ```
 6. Log: `<ts> | watchdog | dispatch.impl | key=$key`
 
-### `dispatch_pr_fix_mode <pr> <branch>`
+### `dispatch_fixer_mode <pr> <branch>`
 
-1. Run pre-flight (assert_target_repo).
-2. Check out the existing branch:
-   `bash $SMITH_PLUGIN_ROOT/scripts/checkout_pr_worktree.sh <key> <branch>`
-   where `<key>` is derived from the branch suffix (e.g.,
-   `task/app-1234-foo` → key `APP-1234`).
-3. Spawn the teammate pair (`smith-pr-$pr`, `anderson-pr-$pr`) per
-   spec Section 18.3 PR-fix variant. Same rule as ticket mode: verify
-   both teammates exist after the spawn calls. Smith aborts on missing
-   Anderson, so a half-spawned dispatch wastes the slot.
-4. Register:
+Used for both Augment-driven and human-reviewer-driven dispatches —
+the fixer pair handles both equally.
+
+1. Run pre-flight (`assert_target_repo.sh`).
+
+2. Cap check (separate from impl cap):
+   ```
+   active=$(bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh count fixer)
+   max=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_fixer_smiths)
+   if [[ $active -ge $max ]]; then
+     log "ignored (fixer cap $active/$max)"
+     return
+   fi
+   ```
+
+3. Round-cap check (per spec — escalate at MAX_FIX_ROUNDS):
+   ```
+   rounds_file=".smith/state/pr-fix-rounds/pr-$pr.json"
+   max_rounds=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh max_fix_rounds)
+   current_rounds=0
+   if [[ -f "$rounds_file" ]]; then
+     current_rounds=$(jq -r .rounds "$rounds_file")
+   fi
+   if (( current_rounds >= max_rounds )); then
+     # Escalate. Add the label and post a comment naming the cap.
+     gh pr edit "$pr" --add-label needs-human-attention
+     gh pr comment "$pr" --body \
+       "Smith fix loop reached $max_rounds rounds without converging. \
+   Current unresolved threads need human review. \
+   To resume after human intervention: rm .smith/state/pr-fix-rounds/pr-$pr.json"
+     log "fixer dispatch refused (round cap $current_rounds/$max_rounds, pr=$pr)"
+     return
+   fi
+   ```
+
+4. Subject-already-in-flight check (same as before; the fixer is per-PR):
+   ```
+   if bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh has-subject "$pr" 2>/dev/null; then
+     log "ignored (fixer already in flight on pr=$pr)"
+     return
+   fi
+   ```
+
+5. Check out the existing branch:
+   ```
+   bash $SMITH_PLUGIN_ROOT/scripts/checkout_pr_worktree.sh <key> <branch>
+   ```
+   (`<key>` derived from the branch suffix, e.g. `task/app-1234-foo`
+   → `APP-1234`.)
+
+6. Spawn the fixer pair — agent types `smith-fixer` and
+   `anderson-fixer`, names `smith-fixer-<pr>` and `anderson-fixer-<pr>`.
+   Per the spawn rules in `commands/implement.md` (do NOT use the
+   `Agent` tool; use natural-language team-creation). Verify both
+   teammates came up before registering.
+
+7. Register the pair:
    ```
    bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh add \
-        "smith-pr-$pr" "anderson-pr-$pr" pr-fix "$pr"
+        "smith-fixer-$pr" "anderson-fixer-$pr" fixer "$pr"
    ```
-5. Log: `<ts> | watchdog | dispatch.pr-fix | pr=$pr`
+
+8. Log: `<ts> | watchdog | dispatch.fixer | pr=$pr rounds=$current_rounds`
 
 ## On teammate completion
 
