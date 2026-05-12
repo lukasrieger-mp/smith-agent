@@ -1380,9 +1380,9 @@ decompose into phases that can be built and verified independently:
    scripts: `checkout_pr_worktree.sh` (checks out the PR's head ref
    into a worktree, mirror of `make_worktree.sh` for existing remote
    branches), `gh_pr_unresolved_comments.sh` (fetch + filter via
-   `gh pr view --json reviewThreads`), `pr_fix_cycle_inc.sh`
-   (per-thread cycle counter; tags PR `needs-human-attention` after 5
-   cycles per spec Section 5.5). The legacy `skills/pr-watch/` was
+   `gh pr view --json reviewThreads`), `pr_fix_round_inc.sh`
+   (per-PR round counter; tags PR `needs-human-attention` after 5
+   rounds per spec Section 5.5). The legacy `skills/pr-watch/` was
    removed — the `pr-comments` monitor (Section 5.6) superseded it.
 7. **Phase 6 — Autonomous watchdog dispatch. ✅ DONE.** The watchdog
    skill body in `skills/watchdog/SKILL.md` now contains the executable
@@ -1452,7 +1452,7 @@ modifications beyond the runtime state directory.
     validate_anderson_reply.sh   ← Anderson schema validator (Phase 3)
     promote_smith_artifacts.sh   ← WIP-stuck artefact promotion (Phase 4)
     gh_pr_unresolved_comments.sh ← PR-fix mode comment fetcher (Phase 5)
-    pr_fix_cycle_inc.sh          ← per-thread cycle counter (Phase 5)
+    pr_fix_round_inc.sh          ← per-PR round counter (Phase 5)
     active_smiths.sh             ← watchdog cap enforcement state (Phase 6)
     pick_top_candidate.sh        ← pick top eligible candidate (Phase 6)
   test/

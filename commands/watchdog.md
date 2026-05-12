@@ -170,7 +170,7 @@ When armed, the watchdog runs fully autonomously:
 - Notification-reaction rules in `skills/watchdog/SKILL.md` are
   executable runbooks backed by helper scripts: `pick_top_candidate.sh`,
   `make_worktree.sh`, `checkout_pr_worktree.sh`,
-  `gh_pr_unresolved_comments.sh`, `pr_fix_cycle_inc.sh`.
+  `gh_pr_unresolved_comments.sh`, `pr_fix_round_inc.sh`.
 
 One piece is not enforced mechanically: Smith teammates must call
 `active_smiths.sh remove` after they finish (their outcome contract
