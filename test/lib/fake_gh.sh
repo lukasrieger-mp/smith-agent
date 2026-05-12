@@ -60,6 +60,10 @@ case "$args" in
     printf '%s\n' "${SMITH_FAKE_GH_PR_URL:-https://github.com/fake/fake/pull/9999}"
     exit 0
     ;;
+  "pr comment "*)
+    # Logged in full at the top of this script; nothing to print, just succeed.
+    exit 0
+    ;;
   "pr edit"*)
     exit 0
     ;;
