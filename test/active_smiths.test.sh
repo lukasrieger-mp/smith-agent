@@ -20,8 +20,8 @@ assert_eq "0" "$got" "initial-count-zero"
 got=$(bash "$SCRIPT" list)
 assert_eq "[]" "$got" "initial-list-empty"
 
-# Add a ticket-mode pair
-bash "$SCRIPT" add smith-APP-1234 anderson-APP-1234 ticket APP-1234
+# Add an impl-mode pair
+bash "$SCRIPT" add smith-APP-1234 anderson-APP-1234 impl APP-1234
 got=$(bash "$SCRIPT" count)
 assert_eq "1" "$got" "count-after-one-add"
 
@@ -30,19 +30,39 @@ got=$(bash "$SCRIPT" list)
 echo "$got" | jq -e 'length == 1
   and .[0].smith_name == "smith-APP-1234"
   and .[0].anderson_name == "anderson-APP-1234"
-  and .[0].mode == "ticket"
+  and .[0].mode == "impl"
   and .[0].subject == "APP-1234"
   and (.[0].spawned_at | type == "string")
 ' >/dev/null || { echo "FAIL: schema check failed: $got" >&2; exit 1; }
 
-# Add a PR-fix pair
-bash "$SCRIPT" add smith-pr-4321 anderson-pr-4321 pr-fix 4321
+# Per-role count subcommand.
+got=$( cd "$TMP" && bash "$SCRIPT" count impl )
+assert_eq "1" "$got" "count impl after one impl add"
+
+got=$( cd "$TMP" && bash "$SCRIPT" count fixer )
+assert_eq "0" "$got" "count fixer when no fixer added"
+
+# Add a fixer entry, then re-check.
+( cd "$TMP" && bash "$SCRIPT" add smith-fixer-891 anderson-fixer-891 fixer 891 )
+got=$( cd "$TMP" && bash "$SCRIPT" count fixer )
+assert_eq "1" "$got" "count fixer after fixer add"
+got=$( cd "$TMP" && bash "$SCRIPT" count impl )
+assert_eq "1" "$got" "count impl unchanged"
+got=$( cd "$TMP" && bash "$SCRIPT" count )
+assert_eq "2" "$got" "total count = 2"
+
+# Remove the fixer pair to keep the rest of the test consistent with
+# the original flow (which expected 2 active pairs at this point).
+bash "$SCRIPT" remove smith-fixer-891
+
+# Add a fixer pair (the PR-fix subject)
+bash "$SCRIPT" add smith-pr-4321 anderson-pr-4321 fixer 4321
 got=$(bash "$SCRIPT" count)
 assert_eq "2" "$got" "count-after-two-adds"
 
 # Adding a duplicate smith_name should fail (deterministic names imply
 # at most one active pair per subject)
-if bash "$SCRIPT" add smith-APP-1234 anderson-x ticket APP-1234 2>/dev/null; then
+if bash "$SCRIPT" add smith-APP-1234 anderson-x impl APP-1234 2>/dev/null; then
   echo "FAIL: should reject duplicate smith_name" >&2; exit 1
 fi
 

@@ -6,12 +6,12 @@
 # key or PR number) that's already in flight.
 #
 # Usage:
-#   active_smiths.sh count
-#       Print the current number of active pairs.
+#   active_smiths.sh count [<impl|fixer>]
+#       Print the count of active pairs, optionally filtered by role.
 #   active_smiths.sh list
 #       Print the full state JSON array.
 #   active_smiths.sh add <SMITH_NAME> <ANDERSON_NAME> <MODE> <SUBJECT>
-#       Record a new pair. MODE = "ticket" | "pr-fix".
+#       Record a new pair. MODE = "impl" | "fixer".
 #       SUBJECT = ticket key (e.g. APP-1234) or PR number (e.g. 4321).
 #       Fails if SMITH_NAME already present.
 #   active_smiths.sh remove <SMITH_NAME>
@@ -23,7 +23,7 @@
 #   {
 #     "smith_name":   "smith-APP-1234",
 #     "anderson_name":"anderson-APP-1234",
-#     "mode":         "ticket" | "pr-fix",
+#     "mode":         "impl" | "fixer",
 #     "subject":      "APP-1234",       // ticket key or PR number string
 #     "spawned_at":   "<ISO-8601 UTC>"
 #   }
@@ -44,7 +44,15 @@ fi
 
 case "$CMD" in
   count)
-    jq 'length' "$state_file"
+    role="${2:-}"
+    if [[ -z "$role" ]]; then
+      jq 'length' "$state_file"
+    else
+      case "$role" in
+        impl|fixer) jq --arg r "$role" '[.[] | select(.mode == $r)] | length' "$state_file" ;;
+        *) echo "active_smiths: count role must be 'impl' or 'fixer' (got '$role')" >&2; exit 1 ;;
+      esac
+    fi
     ;;
   list)
     cat "$state_file"
@@ -56,8 +64,8 @@ case "$CMD" in
     subject="${5:?usage: add <SMITH_NAME> <ANDERSON_NAME> <MODE> <SUBJECT>}"
 
     case "$mode" in
-      ticket|pr-fix) ;;
-      *) echo "active_smiths: mode must be 'ticket' or 'pr-fix' (got '$mode')" >&2; exit 1 ;;
+      impl|fixer) ;;
+      *) echo "active_smiths: mode must be 'impl' or 'fixer' (got '$mode')" >&2; exit 1 ;;
     esac
 
     # Reject duplicate smith_name

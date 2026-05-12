@@ -27,12 +27,12 @@ got=$(echo "$candidates" | bash "$SCRIPT")
 assert_eq "APP-5601" "$got" "case1-pick-first"
 
 # Case 2: top candidate already active → pick next
-bash "${ROOT}/scripts/active_smiths.sh" add smith-APP-5601 anderson-APP-5601 ticket APP-5601
+bash "${ROOT}/scripts/active_smiths.sh" add smith-APP-5601 anderson-APP-5601 impl APP-5601
 got=$(echo "$candidates" | bash "$SCRIPT")
 assert_eq "APP-5612" "$got" "case2-skip-active"
 
 # Case 3: all candidates already active → exit 1 (no candidate, signal to caller)
-bash "${ROOT}/scripts/active_smiths.sh" add smith-APP-5612 anderson-APP-5612 ticket APP-5612
+bash "${ROOT}/scripts/active_smiths.sh" add smith-APP-5612 anderson-APP-5612 impl APP-5612
 if echo "$candidates" | bash "$SCRIPT" 2>/dev/null; then
   echo "FAIL: should exit non-zero when no eligible candidate" >&2; exit 1
 fi

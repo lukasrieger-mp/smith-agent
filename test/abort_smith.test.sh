@@ -35,7 +35,7 @@ cd "$TARGET"
 ( cd "$TARGET" && bash "${ROOT}/scripts/make_worktree.sh" APP-1234 task/app-1234-foo )
 mkdir -p .smith/briefs
 echo "# Brief" > .smith/briefs/APP-1234-brief.md
-bash "${ROOT}/scripts/active_smiths.sh" add smith-APP-1234 anderson-APP-1234 ticket APP-1234
+bash "${ROOT}/scripts/active_smiths.sh" add smith-APP-1234 anderson-APP-1234 impl APP-1234
 
 # JIRA returns "In Progress" (claim status)
 echo '{"fields":{"status":{"name":"In Progress"},"labels":["smith-implementing"]}}' > "$SMITH_FAKE_ACLI_VIEW_FIXTURE"
@@ -66,7 +66,7 @@ grep -q "abort | smith-APP-1234" .smith/log.txt \
 ( cd "$TARGET" && bash "${ROOT}/scripts/make_worktree.sh" APP-2222 task/app-2222-bar )
 mkdir -p .smith/briefs
 echo "# Brief" > .smith/briefs/APP-2222-brief.md
-bash "${ROOT}/scripts/active_smiths.sh" add smith-APP-2222 anderson-APP-2222 ticket APP-2222
+bash "${ROOT}/scripts/active_smiths.sh" add smith-APP-2222 anderson-APP-2222 impl APP-2222
 
 echo '{"fields":{"status":{"name":"Ready for Development"},"labels":[]}}' > "$SMITH_FAKE_ACLI_VIEW_FIXTURE"
 > "$TMP/acli.log"
@@ -85,7 +85,7 @@ git -C "$TARGET" push -q -u origin task/app-3333-baz
 git -C "$TARGET" checkout -q develop
 git -C "$TARGET" branch -D task/app-3333-baz
 ( cd "$TARGET" && bash "${ROOT}/scripts/checkout_pr_worktree.sh" APP-3333 task/app-3333-baz )
-bash "${ROOT}/scripts/active_smiths.sh" add smith-pr-5050 anderson-pr-5050 pr-fix 5050
+bash "${ROOT}/scripts/active_smiths.sh" add smith-pr-5050 anderson-pr-5050 fixer 5050
 
 > "$TMP/acli.log"
 bash "$SCRIPT" 5050 >/dev/null
@@ -114,7 +114,7 @@ if bash "$SCRIPT" 2>/dev/null; then echo "FAIL: missing arg" >&2; exit 1; fi
 git -C "$TARGET" push -q origin task/app-4444-qux:task/app-4444-qux  # simulate Smith pushed the branch
 mkdir -p .smith/briefs
 echo "# Brief" > .smith/briefs/APP-4444-brief.md
-bash "${ROOT}/scripts/active_smiths.sh" add smith-APP-4444 anderson-APP-4444 ticket APP-4444
+bash "${ROOT}/scripts/active_smiths.sh" add smith-APP-4444 anderson-APP-4444 impl APP-4444
 
 echo '{"fields":{"status":{"name":"In Progress"},"labels":["smith-implementing"]}}' > "$SMITH_FAKE_ACLI_VIEW_FIXTURE"
 > "$TMP/acli.log"

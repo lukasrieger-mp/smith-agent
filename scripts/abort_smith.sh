@@ -2,27 +2,27 @@
 # Abort an in-flight Smith dispatch and clean up local + JIRA state.
 #
 # Usage: abort_smith.sh <SUBJECT>
-#   SUBJECT = ticket key (e.g. APP-1234) for ticket mode, OR
-#             PR number (e.g. 4321) for pr-fix mode.
+#   SUBJECT = ticket key (e.g. APP-1234) for impl mode, OR
+#             PR number (e.g. 4321) for fixer mode.
 #
 # Looks up the active entry in `.smith/state/active-smiths.json` to
 # determine mode and teammate names, then tears down:
 #
 #   - Worktree at .smith/worktrees/<key-lower>/  (git worktree remove --force)
-#   - Local branch task/<key>-<slug>             (ticket mode only;
+#   - Local branch task/<key>-<slug>             (impl mode only;
 #                                                 SAFE: only deletes if NOT
 #                                                 pushed to origin)
-#   - Brief at .smith/briefs/<KEY>-brief.md       (ticket mode only)
+#   - Brief at .smith/briefs/<KEY>-brief.md       (impl mode only)
 #   - active-smiths entry
 #   - JIRA: if status is claim_status, revert to eligible_status;
 #           if smith-implementing label present, remove it
-#           (ticket mode only)
+#           (impl mode only)
 #
 # What this script does NOT do:
 #   - Shut down the running Smith/Anderson teammates. That's an
 #     LLM-level operation done via the team API (see commands/abort.md
 #     which orchestrates both).
-#   - Touch PR-fix branches on the remote (they belong to a real PR
+#   - Touch fixer-mode branches on the remote (they belong to a real PR
 #     and are owned by GitHub).
 #
 # Idempotent: re-running on a partially-cleaned-up subject is fine.
@@ -65,8 +65,8 @@ elif [[ -d "$worktree_path" ]]; then
   rm -rf "$worktree_path" && echo "  ✓ worktree directory removed (was not a git worktree)"
 fi
 
-if [[ "$mode" == "ticket" ]]; then
-  # 2a. Local branch (ticket-mode created it from origin/develop)
+if [[ "$mode" == "impl" ]]; then
+  # 2a. Local branch (impl-mode created it from origin/develop)
   # Safe rule: only delete if the branch is NOT pushed to origin.
   branch=$(git branch --list "task/$key_lower-*" --format='%(refname:short)' 2>/dev/null | head -1)
   if [[ -n "$branch" ]]; then
