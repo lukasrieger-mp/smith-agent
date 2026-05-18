@@ -101,6 +101,39 @@ The `mode` field in Smith's request tells you what lens to use.
 Smith sends you a path to a markdown spec he just wrote (via the
 `superpowers:brainstorming` skill). Lenses:
 
+- **Scope creep / hallucination (CRITICAL)**: every novel entity in
+  the spec must be traceable to a specific phrase in the brief's
+  "Original ticket" section. Pattern-match aggressively for invented
+  constructs and flag any unjustified one HIGH severity:
+
+  - **Feature flags** (SharedSplitFlag, GrowthBook, A/B, beta cohort,
+    kill switch): unless the ticket explicitly says "A/B test",
+    "feature flag", "gradual rollout", "behind a flag", or similar —
+    HIGH. Real prior failure: a spec invented `SharedSplitFlag` to
+    guard a feature the ticket never described as A/B. Default
+    presumption when you see one in the spec: it's hallucinated.
+  - **UI complexity beyond the ticket's specified shape**: if the
+    ticket gives an *explicit* UI description (e.g. "title + textbox
+    + button") and the spec proposes a multi-step form, multi-choice
+    selector, wizard, validation overlay, etc. — HIGH. Real prior
+    failure: spec proposed an elaborate multi-choice feedback UI
+    when the ticket said "title + textbox + button".
+    **Exception:** if the ticket gives NO UI direction at all, normal
+    codebase-convention UI design is fine — do NOT flag in that case.
+    The rule fires only when explicit ticket UI direction is being
+    contradicted or expanded upon.
+  - **Telemetry / analytics events** not in the ticket — HIGH.
+  - **New abstractions** ("for extensibility") with no second caller
+    in scope and no ticket phrase requiring them — HIGH.
+  - **Speculative error states / edge cases** not in the ticket —
+    HIGH.
+
+  Default answer for any unprompted addition: "delete from spec".
+  Smith may rebut with a ticket-anchored citation; if he can't, hold.
+  The cost of waving through hallucinated requirements (months of
+  dead code in the codebase) far exceeds the cost of holding Smith
+  on a borderline call.
+
 - **Scope clarity**: does the spec say *exactly* what's in and out of
   scope? Anything ambiguous?
 - **DoD precision**: is the Definition of Done concrete and testable?
@@ -146,11 +179,21 @@ Lenses (the heaviest set):
 
 - **Bugs**: logic errors, off-by-one, null/undefined handling, race
   conditions, error paths that swallow failures silently.
-- **Conventions**: per the target's `CLAUDE.md`:
+- **Conventions**: per the target's `CLAUDE.md` plus Smith-specific
+  additions documented in `agents/smith-impl.md` "Implementation
+  conventions":
   - No `!!` in Kotlin — use `requireNotNull` / `checkNotNull`
   - No fully-qualified names — add imports instead
   - No suppressed lint errors
   - `lintKotlin` and `quality-check.sh` must pass cleanly
+  - **Compose `contentDescription` must NOT be passed** on `Icon` /
+    `Image` / similar composables unless the element is genuinely a
+    meaningful focus target for screen readers. Flag any newly-added
+    or modified `contentDescription = "..."` argument as HIGH severity
+    unless the diff context makes the accessibility case obvious
+    (e.g. the icon is the sole interactive element in its row, with
+    no adjacent text label). Invented/redundant descriptions are
+    noise for accessibility tooling.
 - **Test coverage**: does each new/changed Store have a Store test?
   Are the test assertions verifying behaviour, not mocking it?
 - **Scope drift**: did Smith change files the plan didn't authorize?

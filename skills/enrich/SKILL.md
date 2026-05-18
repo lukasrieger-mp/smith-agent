@@ -38,9 +38,14 @@ state; per-ticket scratch lives in the per-ticket worktree.
 
 ## Smith's reading
 
-- **Acceptance criteria** (expanded, parsed from the ticket body):
+- **Acceptance criteria** (extracted verbatim or near-verbatim from
+  the ticket body; do NOT invent criteria the ticket doesn't state):
   - …
-- **Identified ambiguities** (things the ticket doesn't say but should):
+- **Genuine ambiguities for explicit deferral** (things the ticket
+  leaves open that *materially* affect implementation; default the
+  resolution to the *minimal* interpretation, do NOT maximalise. If
+  you can implement without resolving the ambiguity, don't list it —
+  this is not a brainstorming space):
   - …
 - **Suspected affected files** (from an Explore subagent pass):
   - <file>:<line-range> — <why>

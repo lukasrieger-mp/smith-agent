@@ -46,8 +46,8 @@ fi
     printf '%s\n' '(No description body on JIRA ticket.)'
   fi
   printf '\n%s\n\n' "## Smith's reading"
-  printf '%s\n' '- **Acceptance criteria** (expanded): (Phase 2.x placeholder — Explore subagent fills this in)'
-  printf '%s\n' '- **Identified ambiguities**: (Phase 2.x placeholder)'
+  printf '%s\n' '- **Acceptance criteria** (extracted verbatim/near-verbatim from the ticket body — do NOT invent): (Phase 2.x placeholder — Explore subagent fills this in)'
+  printf '%s\n' '- **Genuine ambiguities for explicit deferral** (default to the minimal interpretation; do NOT maximalise): (Phase 2.x placeholder)'
   printf '%s\n' '- **Suspected affected files**: (Phase 2.x placeholder)'
   printf '%s\n' "- **Platform**: $components"
   printf '\n%s\n\n' "## Proposed DoD"

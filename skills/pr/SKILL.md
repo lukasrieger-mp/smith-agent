@@ -59,10 +59,15 @@ green. Open a normal draft PR.
        > before merging.
        ```
        Then list only the formatter command.
-   - **Spec & plan** — links to the committed files
-     (`docs/superpowers/specs/<…>-design.md`, `docs/superpowers/plans/<…>.md`).
    - **Footer**: `Drafted by Smith (autonomous agent).` Append
      ` [--confident]` when that flag was active.
+
+   Do NOT include a "Spec & plan" links section on the success path.
+   Spec and plan are agent-internal artefacts; they live only at
+   `<worktree>/.smith/specs/` and `<worktree>/.smith/plans/`
+   (gitignored) and are never committed to the branch on success. If
+   you want to reference them in the PR body, inline a brief summary
+   instead — do NOT link to repo paths that don't exist on the branch.
 5. Create the draft PR:
    ```
    gh pr create --draft \
@@ -110,12 +115,19 @@ human will need.
    ```
    bash $SMITH_PLUGIN_ROOT/scripts/promote_smith_artifacts.sh "$ticket"
    ```
-   This script copies the brief from `.smith/briefs/<ticket>-brief.md`
-   into the tracked location `docs/superpowers/specs/<ticket>-brief.md`,
-   and commits any uncommitted partial work as a single
-   `wip(smith): partial work at point of stuck — <ticket>` commit.
-   Spec and plan files were already committed per-gate by
-   `smith:pipeline`, so they ride along automatically.
+   This script:
+   - Copies the brief from `.smith/briefs/<ticket>-brief.md` into the
+     tracked location `docs/superpowers/specs/<ticket>-brief.md`.
+   - Promotes every markdown under `.smith/specs/` and `.smith/plans/`
+     (where `smith:pipeline` wrote spec and plan files during the run,
+     gitignored) into `docs/superpowers/specs/` and
+     `docs/superpowers/plans/`, then `git add`s them.
+   - Commits all uncommitted work — promoted artefacts plus any
+     partial impl — as a single `wip(smith): partial work at point of
+     stuck — <ticket>` commit.
+
+   This is the ONLY codepath that lands spec/plan markdown on the
+   branch. The success path (Path A) leaves them in `.smith/`.
 3. Push the branch (still no force), then kick the PR-comments monitor
    so cadence resets:
    ```
@@ -126,12 +138,18 @@ human will need.
    ```
    title="[WIP - agent-stuck] [<TICKET-KEY>] <summary>"
    ```
-5. Compose body — same sections as the success path PLUS a prominent
-   "Where Smith got stuck" section at the top, containing:
-   - Which gate failed (spec / plan / diff / build)
-   - The `stuck_reason` verbatim
-   - Anderson's last findings (if applicable), formatted as a list
-   - The last log entries from `<target>/.smith/log.txt`
+5. Compose body — same sections as the success path PLUS:
+   - A prominent **"Where Smith got stuck"** section at the top,
+     containing:
+     - Which gate failed (spec / plan / diff / build)
+     - The `stuck_reason` verbatim
+     - Anderson's last findings (if applicable), formatted as a list
+     - The last log entries from `<target>/.smith/log.txt`
+   - A **"Spec & plan"** section linking to the promoted markdown
+     files under `docs/superpowers/specs/` and `docs/superpowers/plans/`
+     (this is the WIP-stuck path's exception to the success-path rule
+     of omitting that section — here the files DO exist on the branch
+     because `promote_smith_artifacts.sh` just committed them).
 6. Create the draft PR with both labels:
    ```
    gh pr create --draft \

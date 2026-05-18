@@ -143,6 +143,90 @@ bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh remove "<your-spawn-name>"
 This removes you from the lead's active-pair tally so the cap doesn't
 drift. Your spawn name is in your spawn prompt (`smith-impl-<ticket>`).
 
+## Implementation conventions
+
+Project-wide style and convention rules. The target repo's `CLAUDE.md`
+is the primary source of truth; these are additions / clarifications
+that apply specifically to autonomous Smith runs.
+
+- **Compose `contentDescription`: omit by default.** When writing or
+  modifying Jetpack Compose composables that accept a
+  `contentDescription` parameter (e.g. `Icon`, `Image`), do NOT pass
+  one unless the element is genuinely a meaningful focus target for
+  screen readers. Most icons in this codebase are decorative (paired
+  with adjacent text labels), and passing a generic description just
+  adds noise for accessibility tooling. When in doubt, leave it
+  unset rather than inventing one. Anderson will flag invented or
+  redundant content descriptions in the diff gate.
+
+## Scope discipline (anti-hallucination)
+
+Tickets describe what to build. Build that, no more. Past failure
+modes from real runs that you must actively guard against:
+
+- **No feature-flag scaffolding** unless the ticket explicitly
+  mentions A/B testing, gradual rollout, beta cohort, kill switch, or
+  "behind a flag". `SharedSplitFlag`, GrowthBook integrations, and
+  similar constructs are out of scope by default. Real failure mode:
+  a spec invented an `SharedSplitFlag` to guard a feature the ticket
+  never described as A/B. The cost of an unwanted flag (review
+  confusion + dead-code paths) far exceeds the cost of adding one
+  later if it ever becomes needed.
+
+- **UI specifications are contracts, not suggestions.** When the
+  ticket *explicitly specifies* a UI shape (e.g. "title + textbox +
+  button"), follow it exactly. No multi-step wizards, multi-choice
+  selectors, validation animations, empty-state illustrations,
+  helper-text panels, or "polish" the ticket didn't request. The
+  visual layout in the ticket is the contract. Real failure mode: a
+  spec proposed an elaborate multiple-choice feedback form when the
+  ticket explicitly said "title + textbox + button".
+
+  **Exception — absence of UI direction:** when the ticket *doesn't*
+  specify a UI shape at all (e.g. only describes behaviour or a
+  desired outcome), you have normal designer latitude. Pick something
+  reasonable, consistent with the codebase's existing patterns. The
+  rule constrains you only against *contradicting or expanding upon
+  explicit ticket UI direction*, not against doing UI work in the
+  absence of direction.
+
+- **No invented edge cases.** "What if the user...?" speculation
+  doesn't justify code paths. If the ticket doesn't describe an error
+  state, don't design one. Mechanically required guards (e.g.
+  handling a null reference your code path actually traverses) are
+  fine; speculative UX flows are not.
+
+- **No analytics / telemetry** unless the ticket explicitly calls
+  for events. New analytics require explicit product approval, not
+  Smith's discretion.
+
+- **No new abstractions "for extensibility".** Don't introduce a
+  sealed class, interface, or DI binding just because "we might want
+  to add X later". Three similar lines is better than a premature
+  abstraction; future work can refactor when a second caller
+  appears.
+
+**Litmus test (apply before sending the spec to Anderson):** for
+every novel entity in your spec — every flag, every screen, every
+abstraction, every option — you should be able to point at a specific
+phrase in the brief's "Original ticket" section that requires it. If
+you can't, delete the entity.
+
+Exception to the litmus test: in the *absence* of explicit ticket
+direction on a question (e.g. ticket doesn't specify a UI layout),
+applying codebase-standard conventions is fine — you don't need to
+cite a phrase for "we made the button look like our other buttons".
+What you DO need to cite a phrase for: anything novel, anything
+guarded by infrastructure (flags, configs, A/B), anything that adds
+optional code paths.
+
+The brief's "Identified ambiguities" section is a place to LIST
+genuine ambiguities, not a license to RESOLVE them by inventing
+features. If the ticket is genuinely ambiguous about something
+important, default the spec to the minimal interpretation; surface
+the ambiguity in the spec's "Out of scope" or "Open questions"
+section so the human reviewer can flag it.
+
 ## Never do
 
 These are hard rules from spec Section 12.1, enforced by the bash-guard

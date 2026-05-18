@@ -19,10 +19,16 @@ suffices to operate.)
 
 ## Outputs
 
-- Branch state: a spec file, a plan file, implementation commits, each
-  committed per gate as documented below.
+- Worktree state: a spec file at `.smith/specs/<date>-<ticket>-design.md`
+  and a plan file at `.smith/plans/<date>-<ticket>.md` (both gitignored
+  via the `.smith/` entry — agent-internal artefacts, NEVER committed
+  to the branch on the success path). Implementation commits per the
+  plan's task list (these *are* committed by subagent-driven-development).
 - Stdout: outcome JSON `{result: "success" | "stuck" | "error", reason, log_entries[]}`
-- Side effects: git commits inside the worktree.
+- Side effects: git commits for impl work only. Spec and plan stay
+  uncommitted in `.smith/`. On WIP-stuck the smith:pr Path B path
+  promotes them into `docs/superpowers/specs/` and `docs/superpowers/plans/`
+  via `promote_smith_artifacts.sh` so the human reviewer can see them.
 
 ## Three gates, mailbox-driven
 
@@ -40,35 +46,48 @@ it as a fallback, no matter how reasonable it feels.
 
 ### Gate 1: SPEC
 
+Spec is an agent-internal artefact. Write it to `<worktree>/.smith/specs/`
+(gitignored). **Never commit it on the success path.** On WIP-stuck,
+`promote_smith_artifacts.sh` copies it into `docs/superpowers/specs/`
+and commits it as part of the WIP-stuck handoff.
+
 1. Invoke the global `superpowers:brainstorming` skill with `$brief_path`
-   as input. It walks Smith through writing
-   `<worktree>/docs/superpowers/specs/<date>-<ticket>-design.md`. (When
-   running in Smith's context, brainstorming should skip the interactive
-   "Let me ask clarifying questions" loop — your spawn prompt is the
-   complete brief.)
+   as input. **Override its default output path** so the spec lands in
+   the agent-internal location, not under `docs/`:
+   ```
+   target: <worktree>/.smith/specs/<date>-<ticket>-design.md
+   ```
+   (When running in Smith's context, brainstorming should also skip the
+   interactive "Let me ask clarifying questions" loop — your spawn
+   prompt is the complete brief.)
+
+   **Apply your scope-discipline litmus test** (`agents/smith-impl.md`
+   "Scope discipline") to the draft spec BEFORE mailboxing Anderson:
+   for every novel entity in the spec (every flag, every screen
+   element beyond what the ticket described, every abstraction, every
+   added option, every analytics event), confirm you can cite a
+   specific phrase in the brief's "Original ticket" section that
+   requires it. Common hallucinations to specifically check for:
+   feature flags (`SharedSplitFlag` etc.), UI elaboration beyond an
+   explicit ticket layout, speculative error states, telemetry not
+   requested. If you can't justify an entity, delete it from the
+   spec before sending. Anderson will catch it otherwise, costing a
+   round.
 2. Mailbox to Anderson:
    ```
    to:   $anderson_name
    body: {
      "type": "review.request",
      "mode": "spec",
-     "artifact_ref": "<worktree>/docs/superpowers/specs/<date>-<ticket>-design.md",
+     "artifact_ref": "<worktree>/.smith/specs/<date>-<ticket>-design.md",
      "round": 1
    }
    ```
 3. Wait for Anderson's mailbox reply with `{type: "anderson.review.findings", findings: [...]}`.
    Timeout: 120s. On timeout → `{result: "error", reason: "anderson timeout at spec gate"}`.
-4. Filter for high-severity findings. If empty → commit the spec file
-   and proceed to Gate 2. The commit touches only the markdown spec
-   under `docs/superpowers/specs/` — no source code — so run it with
-   `--no-verify` to skip the target repo's git hooks (formatters,
-   linters, build/test pre-commit gates). Those hooks exist to validate
-   code changes; running them on a docs-only commit is pure waste and
-   sometimes a false-positive source.
-   ```
-   git add docs/superpowers/specs/<...>-design.md
-   git commit --no-verify -m "spec(smith): $ticket"
-   ```
+4. Filter for high-severity findings. If empty → **do NOT commit the
+   spec file**. Leave it uncommitted in `.smith/specs/` (gitignored).
+   Proceed to Gate 2.
 5. Otherwise: address the high findings (edit the spec). Increment
    round. Goto step 2. Cap at 3 rounds.
 6. Divergence guard (spec Section 5.5): if round 2 → 3 high-finding
@@ -78,14 +97,14 @@ it as a fallback, no matter how reasonable it feels.
 
 ### Gate 2: PLAN
 
-Same shape as Gate 1, but use `superpowers:writing-plans` to produce
-`<worktree>/docs/superpowers/plans/<date>-<ticket>.md`, and mailbox
-Anderson with `mode: "plan"`. Commit the plan markdown the same way as
-the spec — docs-only, so skip the target repo's git hooks:
-```
-git add docs/superpowers/plans/<...>.md
-git commit --no-verify -m "plan(smith): $ticket"
-```
+Same shape as Gate 1, with the same NEVER-commit-on-success-path rule.
+
+Use `superpowers:writing-plans` to produce
+`<worktree>/.smith/plans/<date>-<ticket>.md` (override the skill's
+default output path). Mailbox Anderson with `mode: "plan"` and
+`artifact_ref: "<worktree>/.smith/plans/<date>-<ticket>.md"`. On gate
+pass: leave the plan uncommitted in `.smith/plans/`. On WIP-stuck:
+`promote_smith_artifacts.sh` promotes it.
 
 ### Gate 3: IMPL
 

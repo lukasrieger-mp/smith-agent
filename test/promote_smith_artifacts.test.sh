@@ -76,6 +76,45 @@ sha_second=$(git -C "$W" rev-parse HEAD)
 # Second run on a clean tree with brief already promoted: no new commit
 assert_eq "$sha_first" "$sha_second" "case4-idempotent"
 
+# --- Case 4b: spec and plan promotion from gitignored .smith/ paths ---
+W="$TMP/case4b"
+mk_worktree "$W"
+# Add .smith/ to gitignore so the source files are actually gitignored.
+echo ".smith/" > "$W/.gitignore"
+git -C "$W" add .gitignore && git -C "$W" commit -q -m "ignore .smith"
+mkdir -p "$W/.smith/specs" "$W/.smith/plans"
+echo "# Spec for APP-4500" > "$W/.smith/specs/2026-05-18-APP-4500-design.md"
+echo "# Plan for APP-4500" > "$W/.smith/plans/2026-05-18-APP-4500.md"
+( cd "$W" && bash "$SCRIPT" APP-4500 )
+
+# Promoted spec and plan exist in tracked locations
+[[ -f "$W/docs/superpowers/specs/2026-05-18-APP-4500-design.md" ]] \
+  || { echo "FAIL: spec not promoted" >&2; exit 1; }
+[[ -f "$W/docs/superpowers/plans/2026-05-18-APP-4500.md" ]] \
+  || { echo "FAIL: plan not promoted" >&2; exit 1; }
+# Content matches
+assert_eq "$(cat "$W/.smith/specs/2026-05-18-APP-4500-design.md")" \
+          "$(cat "$W/docs/superpowers/specs/2026-05-18-APP-4500-design.md")" \
+          "case4b-spec-content"
+assert_eq "$(cat "$W/.smith/plans/2026-05-18-APP-4500.md")" \
+          "$(cat "$W/docs/superpowers/plans/2026-05-18-APP-4500.md")" \
+          "case4b-plan-content"
+# Both are committed (tracked)
+git -C "$W" ls-files --error-unmatch docs/superpowers/specs/2026-05-18-APP-4500-design.md >/dev/null 2>&1 \
+  || { echo "FAIL: promoted spec not committed" >&2; exit 1; }
+git -C "$W" ls-files --error-unmatch docs/superpowers/plans/2026-05-18-APP-4500.md >/dev/null 2>&1 \
+  || { echo "FAIL: promoted plan not committed" >&2; exit 1; }
+# The wip commit message style holds
+last_msg=$(git -C "$W" log -1 --pretty=%s)
+assert_contains "$last_msg" "wip(smith)" "case4b-wip-prefix"
+
+# --- Case 4c: idempotent re-run with spec+plan already promoted ---
+( cd "$W" && bash "$SCRIPT" APP-4500 )
+sha_after=$(git -C "$W" rev-parse HEAD)
+sha_first_4b=$(git -C "$W" log --format=%H | sed -n '1p')
+# Second run on clean tree should be a no-op
+assert_eq "$sha_first_4b" "$sha_after" "case4c-idempotent"
+
 # --- Case 5: missing arg ---
 if bash "$SCRIPT" 2>/dev/null; then echo "FAIL: missing arg" >&2; exit 1; fi
 
