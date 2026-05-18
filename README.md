@@ -27,28 +27,43 @@ See [`docs/spec.md`](docs/spec.md) for the full design.
 - `acli` (Atlassian CLI) authenticated to the operator's JIRA
 - `gh` (GitHub CLI) authenticated to the target repo
 
-## Run Smith against a target repo
+## Install
 
-Smith is loaded as a Claude Code plugin via `--plugin-dir`. No install
-step, no symlinks, no marketplace required. The plugin's scripts live
-in `bin/` — Claude Code adds that directory to the Bash tool's `PATH`
-while the plugin is enabled, so skills invoke them by bare name (no
-path prefix, no env var).
+This repository is both the plugin and a one-plugin marketplace. From
+inside any Claude Code session:
 
-```bash
-cd /path/to/your/target-repo
-claude --plugin-dir /path/to/your/smith-agent-clone
 ```
+/plugin marketplace add lukasrieger-mp/smith-agent
+/plugin install smith@smith-agent
+```
+
+Updates: `/plugin update smith@smith-agent` pulls the latest commit.
+(The plugin omits a fixed `version` field, so every push is treated
+as a new release — see [plugin-marketplaces docs][release-channels].)
+
+[release-channels]: https://code.claude.com/docs/en/plugin-marketplaces#version-resolution-and-release-channels
 
 On first enable, Claude Code prompts you for a few JIRA-specific values
 (project key, custom field IDs for Story Points and Sprint, eligible/claim
-status names, poll interval). Defaults work for the operator's setup; other
-adopters override at the prompt.
+status names, poll interval). Defaults work for the operator's setup;
+other adopters override at the prompt.
 
-Inside the session, just use the commands. Per-target setup
-(`.smith/config.json` + a `.gitignore` entry for `.smith/`) is created
-**lazily** on the first invocation that needs it — no explicit bootstrap
-step.
+Per-target setup (`.smith/config.json` + a `.gitignore` entry for
+`.smith/`) is created **lazily** in the target repo on the first
+invocation that needs it — no explicit bootstrap step.
+
+### Running against a target repo
+
+Once installed, launch Claude Code inside any target repo:
+
+```bash
+cd /path/to/your/target-repo
+claude
+```
+
+The plugin's scripts live in `bin/`, which Claude Code adds to the
+Bash tool's `PATH` while the plugin is enabled — skills invoke them
+by bare name (no path prefix, no env var).
 
 - `/smith:implement APP-1234` — dispatch a Smith+Anderson team to implement
   one specific ticket. On a successful draft-PR creation, the command
@@ -71,20 +86,20 @@ SessionStart hook wipes `.smith/state/watchdog-mode` on every new
 Claude Code session, so a fresh session in the same target repo will
 NOT auto-resume any autonomous behaviour from a previous session.
 
-### Suggested shell alias
+### Developing on Smith itself
+
+If you're iterating on this repo (not just using it), clone it and
+load the local copy via `--plugin-dir` instead of installing from the
+marketplace:
 
 ```bash
-# in ~/.zshrc or equivalent (substitute your own clone path)
-alias claude-smith='claude --plugin-dir ~/StudioProjects/smith-agent'
+git clone https://github.com/lukasrieger-mp/smith-agent.git ~/smith-agent
+cd /path/to/your/target-repo
+claude --plugin-dir ~/smith-agent
 ```
 
-Then `cd target-repo && claude-smith` is the day-to-day entry point.
-
-### Iterating on Smith itself
-
-Editing files in this `smith-agent/` repo while a Claude Code session is
-running? Run `/reload-plugins` in that session to pick up the changes
-without restarting.
+`/reload-plugins` picks up edits to the plugin source without
+restarting the session.
 
 ## Run the test suite
 

@@ -1,7 +1,6 @@
 {
   "name": "smith",
-  "version": "0.1.0",
-  "description": "Autonomous JIRA-driven ticket implementation agent. A long-lived watchdog session coordinates short-lived per-ticket Mr. Smith implementers and Mr. Anderson critics as agent-team teammates. Drives spec→plan→impl with adversarial review, files draft PRs, and self-corrects against PR review comments.",
+  "description": "Automatically implement JIRA tickets with agent teams",
   "author": {
     "name": "Lukas Rieger",
     "email": "lukas.rieger@myposter.de"

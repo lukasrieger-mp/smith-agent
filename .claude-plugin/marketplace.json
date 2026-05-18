@@ -1,0 +1,14 @@
+{
+  "name": "smith-agent",
+  "owner": {
+    "name": "Lukas Rieger",
+    "email": "lukas.rieger@myposter.de"
+  },
+  "plugins": [
+    {
+      "name": "smith",
+      "source": ".",
+      "description": "Automatically implement JIRA tickets with agent teams"
+    }
+  ]
+}
