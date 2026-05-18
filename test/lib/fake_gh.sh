@@ -29,6 +29,12 @@ fi
 
 case "$args" in
   "auth status")
+    # Tests set SMITH_FAKE_GH_AUTH_FAIL=1 to simulate an unauthenticated
+    # client. Default: auth always succeeds in tests.
+    if [[ "${SMITH_FAKE_GH_AUTH_FAIL:-0}" == "1" ]]; then
+      echo "You are not logged into any GitHub hosts (fake)." >&2
+      exit 1
+    fi
     exit 0
     ;;
   "repo view --json owner"*)

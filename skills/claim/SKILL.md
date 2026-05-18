@@ -37,14 +37,17 @@ assert_target_repo.sh
 assert_clean_worktree.sh
 ```
 
-Then verify auth:
+Then verify both CLIs are authenticated:
 ```
-acli jira auth status >/dev/null && gh auth status >/dev/null
+assert_clis_authenticated.sh
 ```
 
 If any pre-flight fails, return immediately with
 `{result: "stuck", reason: "<concrete failure>"}` per the Smith persona
-(`agents/smith-impl.md`) outcome contract.
+(`agents/smith-impl.md`) outcome contract. For the auth check
+specifically, the stderr text already names the exact remedy command —
+include it in the `reason` field so the operator's log entry is
+actionable.
 
 ## Race-condition guard
 

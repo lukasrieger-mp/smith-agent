@@ -31,6 +31,12 @@ fi
 
 case "$args" in
   "jira auth status")
+    # Tests set SMITH_FAKE_ACLI_AUTH_FAIL=1 to simulate an unauthenticated
+    # client. Default: auth always succeeds in tests.
+    if [[ "${SMITH_FAKE_ACLI_AUTH_FAIL:-0}" == "1" ]]; then
+      echo "AUTH: not logged in (fake)" >&2
+      exit 1
+    fi
     exit 0
     ;;
   "jira workitem view"*"--json"*)

@@ -101,13 +101,23 @@ script via the `.smith/state/watchdog-mode` sentinel file.)
    ```
    assert_target_repo.sh
    ```
-3. Initialize the watchdog's per-target state files (idempotent;
+3. Verify both CLIs (gh, acli) are authenticated. Without this, the
+   JIRA monitor silently swallows auth errors and emits no
+   notifications — the watchdog feels armed but is functionally
+   blind:
+   ```
+   assert_clis_authenticated.sh
+   ```
+   If this fails, surface the script's stderr verbatim to the operator
+   — it names the exact remedy commands (`gh auth login` /
+   `acli jira auth login`) — and do not arm the watchdog.
+4. Initialize the watchdog's per-target state files (idempotent;
    smith_config.sh handles lazy bootstrap and gitignore management):
    ```
    smith_config.sh target_repo > /dev/null
    active_smiths.sh count > /dev/null
    ```
-4. Record the watchdog mode so the skill knows how to react. Without
+5. Record the watchdog mode so the skill knows how to react. Without
    `--pr-only`, write `full`; with it, write `pr-only`:
    ```
    mkdir -p .smith/state

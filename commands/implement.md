@@ -58,7 +58,16 @@ Examples:
    assert_target_repo.sh
    ```
    If this fails, abort with the script's error message. Do not continue.
-3. Read the cap and active-Smith count:
+3. Verify both CLIs (gh, acli) are authenticated. Without this, the
+   ticket lookup at step 5 fails with an opaque acli error, and any
+   downstream `gh` write would fail mid-pipeline:
+   ```
+   assert_clis_authenticated.sh
+   ```
+   If this fails, surface the script's stderr verbatim to the operator —
+   it names the exact remedy command (`gh auth login` /
+   `acli jira auth login`) — and do not continue.
+4. Read the cap and active-Smith count:
    ```
    max=$(smith_config.sh max_concurrent_impl_smiths)
    ```
@@ -66,14 +75,14 @@ Examples:
    for in-progress tasks. If `active >= max`, abort with message:
    "At max parallelism ($active/$max active). Wait for a Smith to finish,
    or shutdown a teammate, then retry."
-4. Verify the ticket via `acli` (skip the full JQL — just confirm the
+5. Verify the ticket via `acli` (skip the full JQL — just confirm the
    ticket exists, is assigned to you, and is in the eligible status):
    ```
    ticket_json=$(acli jira workitem view "$1" --fields "summary,status,assignee,components,labels" --json)
    ```
    If status is not the configured eligible status (default `Ready for
    Development`) or assignee is not currentUser, abort with the reason.
-5. Classify platform. We merge **components AND labels** because some
+6. Classify platform. We merge **components AND labels** because some
    teams put the platform marker in labels rather than components:
    ```
    markers=$(echo "$ticket_json" | jq -c '
