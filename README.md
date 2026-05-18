@@ -1,15 +1,9 @@
 # Smith — Autonomous Ticket Implementation Agent
 
-A Claude Code plugin that autonomously picks up small JIRA tickets and drives
-them to a draft PR, with adversarial review by Mr. Anderson.
-
-Smith is built on Claude Code's [agent teams][teams] feature: a long-lived
-watchdog session (the team lead) coordinates two short-lived teammate-pair
-flavours — an **impl pair** (`smith-impl` + `anderson-impl`) that drives a
-ticket from claim to draft PR, and a **fixer pair** (`smith-fixer` +
-`anderson-fixer`) that handles one round of PR review feedback. Each pair
-runs in its own fresh context, with separate concurrency caps (default 2
-each).
+A Claude Code plugin that picks up small JIRA tickets and drives them
+to a draft PR. Each ticket is worked by a paired team: Mr. Smith
+implements, Mr. Anderson critiques at every gate. Built on Claude
+Code's [agent teams][teams] feature.
 
 See [`docs/spec.md`](docs/spec.md) for the full design.
 
@@ -17,80 +11,186 @@ See [`docs/spec.md`](docs/spec.md) for the full design.
 
 ## Prerequisites
 
-- Claude Code v2.1.105 or later (`claude --version`) — needed for plugin
-  monitors. Agent teams alone require v2.1.32+, but Smith uses monitors
-  as well.
+- Claude Code v2.1.105 or later (`claude --version`).
 - Agent teams enabled in `~/.claude/settings.json`:
   ```json
   { "env": { "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1" } }
   ```
-- `acli` (Atlassian CLI) authenticated to the operator's JIRA
-- `gh` (GitHub CLI) authenticated to the target repo
+- `acli` (Atlassian CLI) authenticated to your JIRA.
+- `gh` (GitHub CLI) authenticated to your GitHub host.
+
+The slash-command pre-flights verify the CLI auth state and abort with
+a remediation message if either is missing.
 
 ## Install
 
-This repository is both the plugin and a one-plugin marketplace. From
-inside any Claude Code session:
+This repository doubles as a one-plugin marketplace. From inside any
+Claude Code session:
 
 ```
 /plugin marketplace add lukasrieger-mp/smith-agent
 /plugin install smith@smith-agent
 ```
 
-Updates: `/plugin update smith@smith-agent` pulls the latest commit.
-(The plugin omits a fixed `version` field, so every push is treated
-as a new release — see [plugin-marketplaces docs][release-channels].)
+Updates: `/plugin update smith@smith-agent`. Every commit on `main` is
+a new release ([version resolution][release-channels]).
 
 [release-channels]: https://code.claude.com/docs/en/plugin-marketplaces#version-resolution-and-release-channels
 
-On first enable, Claude Code prompts you for a few JIRA-specific values
-(project key, custom field IDs for Story Points and Sprint, eligible/claim
-status names, poll interval). Defaults work for the operator's setup;
-other adopters override at the prompt.
+On first enable, Claude Code prompts for JIRA values (project key,
+custom field IDs for Story Points and Sprint, eligible/claim status
+names, poll interval). Per-target state (`.smith/config.json` + a
+`.gitignore` entry for `.smith/`) is created lazily in the target repo
+on first use; there is no bootstrap step.
 
-Per-target setup (`.smith/config.json` + a `.gitignore` entry for
-`.smith/`) is created **lazily** in the target repo on the first
-invocation that needs it — no explicit bootstrap step.
+## Entry points
 
-### Running against a target repo
+Three slash commands. Pick one based on what you want to do.
 
-Once installed, launch Claude Code inside any target repo:
+### `/smith:implement <KEY>` — one specific ticket
 
-```bash
-cd /path/to/your/target-repo
-claude
+Dispatches a Smith+Anderson pair to implement one JIRA ticket
+end-to-end: claim → enrich → spec → plan → impl → draft PR. On a
+successful PR creation, the command also arms `pr-only` mode (see
+below) so reviewer and Augment comments on that PR trigger automatic
+fixer dispatches. Autonomous JIRA ticket pickup is **not** activated
+by this command.
+
+Flags:
+- `--dry-run` — walk the pipeline with no external side effects (no
+  JIRA writes, no `git push`, no `gh pr create`, no fix-loop arming).
+- `--confident` — skip the full `quality-check.sh` umbrella in the
+  impl gate; only the formatter runs. The PR body flags the skipped
+  checks for the human reviewer.
+
+### `/smith:watchdog` — autonomous loop
+
+Arms three background monitors. The watchdog session reacts to their
+notifications by dispatching Smith+Anderson pairs:
+
+- `jira-candidates` fires when a new eligible ticket appears →
+  dispatch impl pair.
+- `pr-comments` fires when reviewer/Augment comments arrive on an
+  open Smith-authored PR → dispatch fixer pair.
+- `stop-sentinel` fires when `.smith/STOP` is created/removed → pause
+  or resume new dispatches.
+
+Flags:
+- `--pr-only` — watch PRs only; the JIRA monitor stays idle.
+
+Arming is per-session: a `SessionStart` hook wipes the arming state
+on every new Claude Code session, so autonomous behaviour never
+resumes silently. Disarm without exiting: `rm .smith/state/watchdog-mode`.
+
+### `/smith:abort <KEY-or-PR>` — manual cleanup
+
+Tears down an in-flight pair, removes the worktree, reverts JIRA
+state, and clears the active-smiths entry. Argument is a JIRA key
+(impl pair) or a PR number (fixer pair).
+
+### Kill switches
+
+- `touch .smith/STOP` — stops new dispatches within ~2 sec; in-flight
+  pairs wrap up at the next safe checkpoint.
+- JIRA label `no-auto-impl` on a ticket → watchdog skips it.
+- Ctrl-C the session → hard stop; monitors die with the session.
+
+## What this plugin adds
+
+### Agents
+
+| Name | Role |
+|---|---|
+| `smith-impl` | Implements one ticket (claim → enrich → pipeline → PR) |
+| `anderson-impl` | Adversarial reviewer paired with `smith-impl`; gates spec, plan, diff |
+| `smith-fixer` | Triages and applies one round of PR review feedback |
+| `anderson-fixer` | Validates `smith-fixer`'s dismissal decisions; runs final diff review |
+
+Pairs are spawned as long-lived agent-team teammates, never as
+one-shot subagents. A `PreToolUse` hook (`agent-teams-guard`)
+enforces this.
+
+### Skills
+
+Internal — invoked inside Smith teammate sessions, not by the operator
+directly.
+
+| Name | Role |
+|---|---|
+| `smith:claim` | Transitions JIRA status; adds `smith-implementing` label; confirms worktree |
+| `smith:enrich` | Reads the ticket; writes a structured brief under `.smith/briefs/` |
+| `smith:pipeline` | The three-gate spec → plan → impl loop with Anderson critic rounds |
+| `smith:pr` | Opens the draft PR (success path) or the WIP-stuck PR (escalation) |
+| `smith:watchdog` | Reaction runbook loaded into the lead session for notification handling |
+
+### Background monitors
+
+| Name | What it does |
+|---|---|
+| `jira-candidates` | Polls JIRA every 30 min (configurable) for newly eligible tickets |
+| `pr-comments` | Polls open Smith PRs every 60 sec for new review threads; backs off to 30 min after 30 quiet cycles |
+| `stop-sentinel` | Watches `.smith/STOP` every 2 sec |
+
+All three gate on `.smith/state/watchdog-mode` and stay idle until
+one of the entry-point commands writes it.
+
+### Hooks
+
+| Hook | Purpose |
+|---|---|
+| `bash-guard` (PreToolUse) | Denies destructive commands (`rm -rf`, `git push --force`, `git reset --hard`, `gh pr merge/close`, etc.) |
+| `agent-teams-guard` (PreToolUse) | Denies `Task` calls whose `subagent_type` is one of the four Smith/Anderson agent types — they must be spawned via agent-teams |
+| `keep-anderson-alive` (TeammateIdle) | Re-prompts Anderson teammates between mailbox round-trips so they don't self-terminate |
+| SessionStart | Wipes `.smith/state/watchdog-mode` so autonomous behaviour is per-session opt-in |
+
+### Bin scripts
+
+`bin/` is added to the Bash tool's `PATH` while the plugin is
+enabled, so skills and agents invoke helpers by bare name (e.g.
+`active_smiths.sh count`, `jira_scan.sh`). About 30 helpers covering
+JIRA reads/writes, GitHub PR operations, worktree management,
+concurrency tracking, and the auth pre-flight.
+
+## Concurrency model
+
+Two independent caps, both default 2:
+
+- `max_concurrent_impl_smiths` — in-flight impl pairs.
+- `max_concurrent_fixer_smiths` — in-flight fixer pairs.
+
+Each open PR also has a `max_fix_rounds` counter (default 5). On
+cap-hit, the fixer dispatch is refused and the PR is labelled
+`needs-human-attention`. Removing the label or deleting the per-PR
+counter file revives the loop.
+
+## Layout
+
+```
+.claude-plugin/
+  plugin.json          Plugin manifest
+  marketplace.json     One-plugin marketplace manifest
+agents/                Four teammate personas
+commands/              Three slash commands
+skills/                Five skill bodies
+monitors/monitors.json Three background monitors
+hooks/hooks.json       PreToolUse + SessionStart + TeammateIdle hooks
+bin/                   Bash helpers on PATH (~30 scripts)
+test/                  Script tests + JSON fixtures
+docs/spec.md           Full design spec
 ```
 
-The plugin's scripts live in `bin/`, which Claude Code adds to the
-Bash tool's `PATH` while the plugin is enabled — skills invoke them
-by bare name (no path prefix, no env var).
+## Tests
 
-- `/smith:implement APP-1234` — dispatch a Smith+Anderson team to implement
-  one specific ticket. On a successful draft-PR creation, the command
-  also arms `pr-only` mode and starts watching that PR for reviewer /
-  Augment comments (auto-dispatching fixer pairs on responses).
-  Autonomous JIRA ticket pickup is **not** activated by this command.
-- `/smith:implement APP-1234 --dry-run` — walk the pipeline without external
-  side effects (no JIRA writes, no git push, no PR creation, no fix-loop
-  arming)
-- `/smith:watchdog` — arm the autonomous watchdog in `full` mode. The
-  JIRA-candidates monitor begins polling for new eligible tickets AND
-  the pr-comments monitor watches all open Smith-authored PRs.
-- `/smith:watchdog --pr-only` — arm only the pr-comments side. JIRA
-  monitor stays idle. Same scope as the auto-arm `/smith:implement`
-  performs on success, but without dispatching an impl pair first.
+```bash
+for t in test/lib/*.test.sh test/*.test.sh; do bash "$t" || exit 1; done
+echo "All tests pass."
+```
 
-Until one of those commands is invoked in a session, all monitors
-stay idle and Smith is fully passive. Arming is per-session — the
-SessionStart hook wipes `.smith/state/watchdog-mode` on every new
-Claude Code session, so a fresh session in the same target repo will
-NOT auto-resume any autonomous behaviour from a previous session.
+## Developing on Smith
 
-### Developing on Smith itself
-
-If you're iterating on this repo (not just using it), clone it and
-load the local copy via `--plugin-dir` instead of installing from the
-marketplace:
+To iterate on this plugin itself (rather than just use it), clone the
+repo and load the local copy with `--plugin-dir` instead of installing
+from the marketplace:
 
 ```bash
 git clone https://github.com/lukasrieger-mp/smith-agent.git ~/smith-agent
@@ -98,87 +198,4 @@ cd /path/to/your/target-repo
 claude --plugin-dir ~/smith-agent
 ```
 
-`/reload-plugins` picks up edits to the plugin source without
-restarting the session.
-
-## Run the test suite
-
-From the plugin source root:
-
-```bash
-for t in test/lib/*.test.sh test/*.test.sh; do bash "$t" || exit 1; done
-echo "All tests pass."
-```
-
-## Layout
-
-```
-.claude-plugin/plugin.json   Plugin manifest (name, version, description)
-agents/smith-impl.md         Implementer (impl-pair teammate, ticket mode)
-agents/anderson-impl.md      Adversarial critic (impl-pair teammate)
-agents/smith-fixer.md        Per-round PR-fix triager (fixer-pair teammate)
-agents/anderson-fixer.md     Dismissal validator (fixer-pair teammate)
-commands/                    Slash commands  → /smith:implement, /smith:watchdog
-skills/                      → /smith:watchdog, /smith:claim, /smith:enrich,
-                                /smith:pipeline, /smith:pr, /smith:pr-watch
-monitors/monitors.json       Background notification monitors (Section 5.6)
-bin/                         Shared bash helpers on PATH (jira_scan, classify, ...)
-                             + monitor scripts (monitor_jira.sh, etc.)
-test/                        Script tests + JSON fixtures
-docs/spec.md                 Design spec
-```
-
-## Kill switches (in the target repo)
-
-- `touch <target>/.smith/STOP` — watchdog exits cleanly at next tick
-- Add JIRA label `no-auto-impl` to a ticket — watchdog skips it
-- Ctrl-C the Claude Code session running the watchdog
-
-## How it runs
-
-1. Operator runs `claude --plugin-dir ~/StudioProjects/smith-agent`
-   from inside a target repo
-2. Operator invokes `/smith:watchdog` once (or `/smith:watchdog --pr-only`
-   for PR-fix-only mode) — monitors begin polling
-3. From this point: when a new eligible JIRA candidate appears the
-   watchdog dispatches an impl pair; when reviewer comments arrive on
-   a Smith-authored PR it dispatches a fixer pair. Each pair runs
-   within its own concurrency cap.
-4. Smith implements the ticket (impl pair) or triages and addresses
-   one round of comments (fixer pair) with Anderson critiquing along
-   the way.
-
-Two distinct teammate-pair roles drive everything:
-
-- **Impl pair** (`smith-impl` + `anderson-impl`) — implements one
-  ticket end-to-end: claim → enrich → pipeline (with 3-gate Anderson
-  critic) → open draft PR with `augment review` triggered.
-- **Fixer pair** (`smith-fixer` + `anderson-fixer`) — handles one
-  round of PR review feedback (Augment-bot-driven or human-reviewer-driven).
-  Triages findings, applies fixes or dismisses with Anderson-validated
-  justification, pushes, re-triggers Augment OR converges.
-
-The fixer dispatch is **separate** from impl dispatch — they have
-their own concurrency caps (`max_concurrent_impl_smiths` and
-`max_concurrent_fixer_smiths`, both default 2). Each PR has its own
-round counter (`max_fix_rounds`, default 5). On convergence (a round
-that produced zero fix-class findings), the fixer cleans up per-PR
-state and posts a summary comment; on hitting the round cap, the
-watchdog escalates the PR with the `needs-human-attention` label.
-
-The watchdog session reacts to monitor notifications by:
-- Counting active pairs per role via `active_smiths.sh count <role>`
-- Picking top eligible JIRA key via `pick_top_candidate.sh` (impl path)
-- Reading the per-PR round counter before fixer dispatch
-- Spawning the teammate pair via the agent-teams API
-- Registering the pair in `active_smiths.sh` so the cap holds
-
-Operator overrides: `/smith:implement APP-XXXX` for a manual dispatch;
-`touch .smith/STOP` for a soft kill switch (~2 sec response); remove
-the `needs-human-attention` label (or delete the per-PR round-counter
-file) to revive a capped-out fix loop.
-
-Known gap: the brief's "Suspected affected files" section is a static
-placeholder. A follow-up could populate it via an Explore subagent
-dispatch — useful for larger tickets where Smith would benefit from
-a precomputed pointer set.
+`/reload-plugins` picks up edits without restarting the session.
