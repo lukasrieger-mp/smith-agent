@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-SCRIPT="${ROOT}/scripts/gh_resolve_review_thread.sh"
+SCRIPT="${ROOT}/bin/gh_resolve_review_thread.sh"
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT

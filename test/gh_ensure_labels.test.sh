@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-SCRIPT="${ROOT}/scripts/gh_ensure_labels.sh"
+SCRIPT="${ROOT}/bin/gh_ensure_labels.sh"
 
 # Dry-run prints both expected gh label commands
 got=$(SMITH_DRY_RUN_GH_ENSURE_LABELS=1 bash "$SCRIPT")

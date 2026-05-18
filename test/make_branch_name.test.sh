@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-SCRIPT="${ROOT}/scripts/make_branch_name.sh"
+SCRIPT="${ROOT}/bin/make_branch_name.sh"
 
 # basic happy path
 got="$(bash "$SCRIPT" "APP-5485" "App Review-Dialog auf dem Home Screen")"

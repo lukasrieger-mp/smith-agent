@@ -50,17 +50,17 @@ Examples:
 1. Verify agent-teams is enabled. Without it the Smith/Anderson pair
    spawn degrades silently to one-shot subagents:
    ```
-   bash $SMITH_PLUGIN_ROOT/scripts/assert_agent_teams_enabled.sh
+   assert_agent_teams_enabled.sh
    ```
    If this fails, abort with the script's error message. Do not continue.
 2. Verify your CWD is the configured target repo:
    ```
-   bash $SMITH_PLUGIN_ROOT/scripts/assert_target_repo.sh
+   assert_target_repo.sh
    ```
    If this fails, abort with the script's error message. Do not continue.
 3. Read the cap and active-Smith count:
    ```
-   max=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_impl_smiths)
+   max=$(smith_config.sh max_concurrent_impl_smiths)
    ```
    Count current active Smith teammates by checking your team's task list
    for in-progress tasks. If `active >= max`, abort with message:
@@ -79,7 +79,7 @@ Examples:
    markers=$(echo "$ticket_json" | jq -c '
      (.fields.components // [] | map(.name)) + (.fields.labels // [])
    ')
-   platform=$(echo "$markers" | bash $SMITH_PLUGIN_ROOT/scripts/classify_platform.sh)
+   platform=$(echo "$markers" | classify_platform.sh)
    ```
    `classify_platform.sh` recognises: `Shared/KMP`, `KMP`, `Shared`,
    `Multiplatform` → `kmp`; `Android` → `android`; pure `iOS` → `ios`;
@@ -102,7 +102,7 @@ raw_summary=$(... from acli output ...)
 # If raw_summary is non-English, translate to a short English phrase.
 # Example: "Größere Schrift für ältere Nutzer" → "larger font for older users"
 english_summary=<your English rendering of the ticket's intent>
-branch=$(bash $SMITH_PLUGIN_ROOT/scripts/make_branch_name.sh "$ticket" "$english_summary")
+branch=$(make_branch_name.sh "$ticket" "$english_summary")
 ```
 
 Worktree path: `<target>/.smith/worktrees/<ticket-key-lowercased>/`
@@ -110,7 +110,7 @@ Worktree path: `<target>/.smith/worktrees/<ticket-key-lowercased>/`
 Create the worktree unconditionally:
 
 ```
-bash $SMITH_PLUGIN_ROOT/scripts/make_worktree.sh "$ticket" "$branch"
+make_worktree.sh "$ticket" "$branch"
 ```
 
 This is local-only and trivially reversible (`git worktree remove`

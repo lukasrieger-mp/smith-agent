@@ -28,14 +28,14 @@ green. Open a normal draft PR.
 1. Ensure the GitHub labels Smith uses actually exist in the repo. The
    helper is idempotent — a no-op when the labels are already there:
    ```
-   bash $SMITH_PLUGIN_ROOT/scripts/gh_ensure_labels.sh
+   gh_ensure_labels.sh
    ```
 2. Push the branch, then kick the PR-comments monitor so its cadence
    resets — reviewers may start commenting within minutes of the PR
    appearing:
    ```
    git push -u origin "$branch"
-   bash $SMITH_PLUGIN_ROOT/scripts/pr_comments_reset.sh
+   pr_comments_reset.sh
    ```
 3. Compose the PR title:
    ```
@@ -88,7 +88,7 @@ green. Open a normal draft PR.
    Also kick the pr-comments monitor so its cadence resets to the
    active interval:
    ```
-   bash $SMITH_PLUGIN_ROOT/scripts/pr_comments_reset.sh
+   pr_comments_reset.sh
    ```
 7. Remove the `smith-implementing` JIRA label:
    ```
@@ -109,11 +109,11 @@ human will need.
 
 1. Ensure the GitHub labels Smith uses actually exist:
    ```
-   bash $SMITH_PLUGIN_ROOT/scripts/gh_ensure_labels.sh
+   gh_ensure_labels.sh
    ```
 2. **Promote artefacts** so the next human sees them in the PR:
    ```
-   bash $SMITH_PLUGIN_ROOT/scripts/promote_smith_artifacts.sh "$ticket"
+   promote_smith_artifacts.sh "$ticket"
    ```
    This script:
    - Copies the brief from `.smith/briefs/<ticket>-brief.md` into the
@@ -132,7 +132,7 @@ human will need.
    so cadence resets:
    ```
    git push -u origin "$branch"
-   bash $SMITH_PLUGIN_ROOT/scripts/pr_comments_reset.sh
+   pr_comments_reset.sh
    ```
 4. Compose title:
    ```

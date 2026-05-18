@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-SCRIPT="${ROOT}/scripts/promote_smith_artifacts.sh"
+SCRIPT="${ROOT}/bin/promote_smith_artifacts.sh"
 
 # Set up a temp git repo as the "worktree"
 mk_worktree() {

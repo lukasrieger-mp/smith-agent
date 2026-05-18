@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-SCRIPT="${ROOT}/scripts/classify_platform.sh"
+SCRIPT="${ROOT}/bin/classify_platform.sh"
 
 # Pure iOS -> reject (exit 0, stdout "ios")
 got=$(echo '["iOS"]' | bash "$SCRIPT")

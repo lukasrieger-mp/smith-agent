@@ -11,8 +11,7 @@ ticket from claim to draft PR, and a **fixer pair** (`smith-fixer` +
 runs in its own fresh context, with separate concurrency caps (default 2
 each).
 
-See [`docs/spec.md`](docs/spec.md) for the full design. Implementation plans
-live in [`docs/plans/`](docs/plans/).
+See [`docs/spec.md`](docs/spec.md) for the full design.
 
 [teams]: https://code.claude.com/docs/en/agent-teams
 
@@ -30,20 +29,15 @@ live in [`docs/plans/`](docs/plans/).
 
 ## Run Smith against a target repo
 
-Smith is loaded as a Claude Code plugin via `--plugin-dir`. No install step,
-no symlinks, no marketplace required.
-
-**Important:** Smith's skill content references `$SMITH_PLUGIN_ROOT` in
-the Bash commands it issues. You must set this env var to the plugin
-source path **before** launching Claude Code — Claude Code does not
-populate `$CLAUDE_PLUGIN_ROOT` for skill-driven Bash invocations (only
-for monitor/hook/MCP/LSP commands, where Claude Code substitutes at
-read-time).
+Smith is loaded as a Claude Code plugin via `--plugin-dir`. No install
+step, no symlinks, no marketplace required. The plugin's scripts live
+in `bin/` — Claude Code adds that directory to the Bash tool's `PATH`
+while the plugin is enabled, so skills invoke them by bare name (no
+path prefix, no env var).
 
 ```bash
 cd /path/to/your/target-repo
-export SMITH_PLUGIN_ROOT=~/StudioProjects/smith-agent
-claude --plugin-dir ~/StudioProjects/smith-agent
+claude --plugin-dir /path/to/your/smith-agent-clone
 ```
 
 On first enable, Claude Code prompts you for a few JIRA-specific values
@@ -80,13 +74,11 @@ NOT auto-resume any autonomous behaviour from a previous session.
 ### Suggested shell alias
 
 ```bash
-# in ~/.zshrc or equivalent
-alias claude-smith='SMITH_PLUGIN_ROOT=~/StudioProjects/smith-agent claude --plugin-dir ~/StudioProjects/smith-agent'
+# in ~/.zshrc or equivalent (substitute your own clone path)
+alias claude-smith='claude --plugin-dir ~/StudioProjects/smith-agent'
 ```
 
 Then `cd target-repo && claude-smith` is the day-to-day entry point.
-The alias sets `SMITH_PLUGIN_ROOT` for the entire Claude Code session
-so every skill-driven Bash invocation can find the plugin's scripts.
 
 ### Iterating on Smith itself
 
@@ -115,11 +107,10 @@ commands/                    Slash commands  → /smith:implement, /smith:watchd
 skills/                      → /smith:watchdog, /smith:claim, /smith:enrich,
                                 /smith:pipeline, /smith:pr, /smith:pr-watch
 monitors/monitors.json       Background notification monitors (Section 5.6)
-scripts/                     Shared bash helpers (jira_scan, classify, ...)
+bin/                         Shared bash helpers on PATH (jira_scan, classify, ...)
                              + monitor scripts (monitor_jira.sh, etc.)
 test/                        Script tests + JSON fixtures
 docs/spec.md                 Design spec
-docs/plans/                  Historical build plans (one per phase)
 ```
 
 ## Kill switches (in the target repo)

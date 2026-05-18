@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-SCRIPT="${ROOT}/scripts/monitor_jira.sh"
+SCRIPT="${ROOT}/bin/monitor_jira.sh"
 FIX="${SCRIPT_DIR}/fixtures"
 
 # Run the monitor in oneshot mode against a fake working directory.

@@ -16,7 +16,7 @@ watchdog. This is the entry point for Smith's event-driven operation
 > `Task` tools produce one-shot subagents that exit after their first
 > reply — that would strand Smith with no Anderson at the first review
 > gate. A PreToolUse hook
-> (`scripts/hook_agent_teams_guard.sh`) denies any `Agent`/`Task`
+> (`bin/hook_agent_teams_guard.sh`) denies any `Agent`/`Task`
 > call whose `subagent_type` is one of `smith-impl`, `anderson-impl`,
 > `smith-fixer`, `anderson-fixer`. If you see that denial, re-issue
 > the dispatch with team-creation phrasing — do not retry the
@@ -95,17 +95,17 @@ script via the `.smith/state/watchdog-mode` sentinel file.)
 1. Verify agent-teams is enabled (Smith and Anderson must spawn as
    real teammates, not one-shot subagents):
    ```
-   bash $SMITH_PLUGIN_ROOT/scripts/assert_agent_teams_enabled.sh
+   assert_agent_teams_enabled.sh
    ```
 2. Verify CWD is the configured target repo:
    ```
-   bash $SMITH_PLUGIN_ROOT/scripts/assert_target_repo.sh
+   assert_target_repo.sh
    ```
 3. Initialize the watchdog's per-target state files (idempotent;
    smith_config.sh handles lazy bootstrap and gitignore management):
    ```
-   bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh target_repo > /dev/null
-   bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh count > /dev/null
+   smith_config.sh target_repo > /dev/null
+   active_smiths.sh count > /dev/null
    ```
 4. Record the watchdog mode so the skill knows how to react. Without
    `--pr-only`, write `full`; with it, write `pr-only`:
@@ -126,7 +126,7 @@ Before the monitors emit their first notifications, you may want to do
 an immediate manual scan to surface anything currently eligible:
 
 ```
-bash $SMITH_PLUGIN_ROOT/scripts/jira_scan.sh
+jira_scan.sh
 ```
 
 If candidates appear and the cap has room, apply the same dispatch

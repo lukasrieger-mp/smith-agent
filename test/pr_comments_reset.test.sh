@@ -10,8 +10,8 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-MONITOR="${ROOT}/scripts/monitor_pr_comments.sh"
-RESET="${ROOT}/scripts/pr_comments_reset.sh"
+MONITOR="${ROOT}/bin/monitor_pr_comments.sh"
+RESET="${ROOT}/bin/pr_comments_reset.sh"
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT

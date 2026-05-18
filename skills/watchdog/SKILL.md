@@ -18,7 +18,7 @@ monitors by writing `.smith/state/watchdog-mode`).
 > below). The `Agent` and `Task` tools create one-shot subagents that
 > die after their first reply — that breaks the mailbox protocol
 > Smith and Anderson use to coordinate across gates. A PreToolUse
-> hook (`scripts/hook_agent_teams_guard.sh`) denies any `Agent`/`Task`
+> hook (`bin/hook_agent_teams_guard.sh`) denies any `Agent`/`Task`
 > call whose `subagent_type` is one of `smith-impl`, `anderson-impl`,
 > `smith-fixer`, `anderson-fixer`. If you trip it, re-dispatch via
 > team creation — do not work around the hook.
@@ -50,7 +50,7 @@ The watchdog session never edits code. Its job is:
 3. **Dispatch teammate pairs** (Smith + Anderson) in response to
    notifications, respecting the 2-concurrency cap and kill switch.
 4. **Track state**: the cap is enforced via
-   `scripts/active_smiths.sh`; the kill-switch flag lives in your
+   `bin/active_smiths.sh`; the kill-switch flag lives in your
    in-context working memory.
 
 Code-editing happens entirely inside teammate subsessions — never in
@@ -96,16 +96,16 @@ primary suppression.
 if smith_stop_active: log "ignored (stopped)"; return
 mode=$(cat .smith/state/watchdog-mode 2>/dev/null || echo full)
 if [[ "$mode" == "pr-only" ]]: log "ignored (pr-only)"; return
-active=$(bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh count)
-max=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_impl_smiths)
+active=$(active_smiths.sh count)
+max=$(smith_config.sh max_concurrent_impl_smiths)
 if [[ $active -ge $max ]]: log "ignored (cap $active/$max)"; return
 
 # Fetch fresh candidates (notification keys may be stale by now)
-candidates=$(bash $SMITH_PLUGIN_ROOT/scripts/jira_scan.sh)
+candidates=$(jira_scan.sh)
 
 # Pick the top key not already being worked on
 key=$(echo "$candidates" \
-     | bash $SMITH_PLUGIN_ROOT/scripts/pick_top_candidate.sh) \
+     | pick_top_candidate.sh) \
   || { log "ignored (all candidates already active)"; return; }
 
 # Dispatch: follow the /smith:implement command's flow exactly,
@@ -172,7 +172,7 @@ the dispatch will silently degrade).
    `dispatch.failed-pair-spawn`, and return.
 5. Register the pair:
    ```
-   bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh add \
+   active_smiths.sh add \
         "smith-impl-$key" "anderson-impl-$key" impl "$key"
    ```
 6. Log: `<ts> | watchdog | dispatch.impl | key=$key`
@@ -186,8 +186,8 @@ the fixer pair handles both equally.
 
 2. Cap check (separate from impl cap):
    ```
-   active=$(bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh count fixer)
-   max=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh max_concurrent_fixer_smiths)
+   active=$(active_smiths.sh count fixer)
+   max=$(smith_config.sh max_concurrent_fixer_smiths)
    if [[ $active -ge $max ]]; then
      log "ignored (fixer cap $active/$max)"
      return
@@ -197,7 +197,7 @@ the fixer pair handles both equally.
 3. Round-cap check (per spec — escalate at MAX_FIX_ROUNDS):
    ```
    rounds_file=".smith/state/pr-fix-rounds/pr-$pr.json"
-   max_rounds=$(bash $SMITH_PLUGIN_ROOT/scripts/smith_config.sh max_fix_rounds)
+   max_rounds=$(smith_config.sh max_fix_rounds)
    current_rounds=0
    if [[ -f "$rounds_file" ]]; then
      current_rounds=$(jq -r .rounds "$rounds_file")
@@ -216,7 +216,7 @@ the fixer pair handles both equally.
 
 4. Subject-already-in-flight check (same as before; the fixer is per-PR):
    ```
-   if bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh has-subject "$pr" 2>/dev/null; then
+   if active_smiths.sh has-subject "$pr" 2>/dev/null; then
      log "ignored (fixer already in flight on pr=$pr)"
      return
    fi
@@ -224,7 +224,7 @@ the fixer pair handles both equally.
 
 5. Check out the existing branch:
    ```
-   bash $SMITH_PLUGIN_ROOT/scripts/checkout_pr_worktree.sh <key> <branch>
+   checkout_pr_worktree.sh <key> <branch>
    ```
    (`<key>` derived from the branch suffix, e.g. `task/app-1234-foo`
    → `APP-1234`.)
@@ -237,7 +237,7 @@ the fixer pair handles both equally.
 
 7. Register the pair:
    ```
-   bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh add \
+   active_smiths.sh add \
         "smith-fixer-$pr" "anderson-fixer-$pr" fixer "$pr"
    ```
 
@@ -250,7 +250,7 @@ When Smith sends a `smith.outcome` mailbox message:
 1. Log the outcome JSON to `.smith/log.txt`.
 2. Remove the pair from active-smiths:
    ```
-   bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh remove "$smith_name"
+   active_smiths.sh remove "$smith_name"
    ```
 3. The Anderson teammate shuts down (the agent-teams shutdown hook
    handles this; you don't need to do it explicitly).

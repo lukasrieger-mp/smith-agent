@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-SCRIPT="${ROOT}/scripts/assert_target_repo.sh"
+SCRIPT="${ROOT}/bin/assert_target_repo.sh"
 
 # Case 1: inside a fresh git repo with no .smith/ → PASS via lazy bootstrap.
 # (assert_target_repo now auto-invokes smith_config.sh which creates config

@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-SCRIPT="${ROOT}/scripts/jira_transition.sh"
+SCRIPT="${ROOT}/bin/jira_transition.sh"
 
 # Stage a temp dir with a fake-acli on PATH so we never touch real JIRA.
 TMP=$(mktemp -d)

@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-SCRIPT="${ROOT}/scripts/write_brief.sh"
+SCRIPT="${ROOT}/bin/write_brief.sh"
 
 # Stage worktree + fake acli
 TMP=$(mktemp -d)

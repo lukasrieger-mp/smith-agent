@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/hook_bash_guard.sh"
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/hook_bash_guard.sh"
           }
         ]
       },
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/hook_agent_teams_guard.sh"
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/hook_agent_teams_guard.sh"
           }
         ]
       }
@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/hook_keep_anderson_alive.sh"
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/hook_keep_anderson_alive.sh"
           }
         ]
       }

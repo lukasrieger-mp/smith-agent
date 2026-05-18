@@ -25,7 +25,7 @@ ONESHOT="${SMITH_MONITOR_ONESHOT:-0}"
 
 emit_diff_if_any() {
   local current last new
-  current=$(bash "$PLUGIN_ROOT/scripts/jira_scan.sh" 2>/dev/null \
+  current=$(bash "$PLUGIN_ROOT/bin/jira_scan.sh" 2>/dev/null \
             | jq -c '[.[] | .key] | sort' 2>/dev/null \
             || echo "[]")
 

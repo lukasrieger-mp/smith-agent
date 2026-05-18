@@ -233,8 +233,8 @@ on smith.pr.new_comments {pr, new_count, branch}:
   if rounds[pr] >= config.max_fix_rounds: escalate, do not dispatch
   if there's already a fixer Smith working on this PR: return
   spawn { smith-fixer, anderson-fixer } pair for the PR
-  # See docs/superpowers/specs/2026-05-12-augment-driven-fix-loop-design.md
-  # for the per-PR round-counter + convergence logic.
+  # See skills/watchdog/SKILL.md "dispatch_fixer_mode" for the
+  # per-PR round-counter + convergence logic.
 
 on smith.stop.requested:
   smith_stop_active = true
@@ -852,26 +852,31 @@ Mediated by `scripts/run-silent.sh` per the agent repo's `CLAUDE.md`. Strictly:
 
 ### 10.1 Local (gitignored) during implementation
 
-All under `docs/superpowers/`:
+All under `<worktree>/.smith/` (gitignored via the target's `.smith/`
+entry — see Section 17.3 for the lazy bootstrap):
 
-- `specs/.smith/<ticket>-brief.md` — enrichment output from `smith:enrich`
-- `specs/.smith/<date>-<ticket>-design.md` — Smith's spec
-- `plans/.smith/<date>-<ticket>.md` — Smith's plan
+- `.smith/briefs/<ticket>-brief.md` — enrichment output from `smith:enrich`
+- `.smith/specs/<date>-<ticket>-design.md` — Smith's spec
+- `.smith/plans/<date>-<ticket>.md` — Smith's plan
 
-The `.smith/` prefix keeps these isolated. The whole `docs/` tree is already
-untracked in this repo (matching operator preference), so the `.smith/` prefix
-is belt-and-braces in case `docs/` is added to git later.
+Spec and plan files are written via the brainstorming / writing-plans
+skill defaults overridden by `skills/pipeline/SKILL.md` so they land in
+the agent-internal `.smith/` paths rather than under `docs/`. They are
+**never** committed during the pipeline.
 
 ### 10.2 Promoted to committed locations on WIP-stuck
 
-When `smith:pr` enters the WIP-stuck path, it moves:
+When `smith:pr` enters the WIP-stuck path, `bin/promote_smith_artifacts.sh`
+copies:
 
-- `specs/.smith/<ticket>-brief.md` → `specs/<date>-<ticket>-brief.md`
-- `specs/.smith/<date>-<ticket>-design.md` → `specs/<date>-<ticket>-design.md`
-- `plans/.smith/<date>-<ticket>.md` → `plans/<date>-<ticket>.md`
+- `.smith/briefs/<ticket>-brief.md` → `docs/superpowers/specs/<ticket>-brief.md`
+- Every `.smith/specs/*.md` → `docs/superpowers/specs/`
+- Every `.smith/plans/*.md` → `docs/superpowers/plans/`
 
-…and commits them as part of the WIP-stuck PR. The next human picking up the
-ticket gets full context.
+…then `git add`s and commits them as part of the WIP-stuck handoff
+commit. The next human picking up the ticket gets full context. The
+success path leaves all `.smith/` artefacts in place (gitignored) and
+never promotes — a normal Smith PR contains only impl commits.
 
 ### 10.3 PR title + body
 
@@ -1381,10 +1386,8 @@ decompose into phases that can be built and verified independently:
    Anderson + Smith agent definitions (placeholder review behaviour), six
    SKILL.md skeletons, two slash commands. Goal: prove the file structure
    is correct, scripts pass tests, and Claude Code discovers the plugin
-   items when loaded via `claude --plugin-dir`. Phase 1 is partly complete
-   on this repo's `main` branch; see
-   [`docs/plans/2026-05-11-phase-1-skeleton.md`](plans/2026-05-11-phase-1-skeleton.md)
-   for status.
+   items when loaded via `claude --plugin-dir`. Phase 1 landed on `main`
+   as the initial skeleton.
 2. **Phase 1.5 — Full SKILL rewrite. ✅ DONE.** The agent-teams pivot
    triggered a rewrite of the SKILL.md skeletons and slash commands.
    Phase 1.5 finished those rewrites with the agent-team model in mind.
@@ -1510,14 +1513,12 @@ names drop the redundant `smith-` prefix.
 
 ### 17.2 Runtime: loading the plugin
 
-Smith is **not installed** in the conventional sense. Instead, the operator
+Smith is **not installed** in the conventional sense. The operator
 starts a Claude Code session inside the target repo with the
-`--plugin-dir` flag pointing at this plugin source, **plus** the
-`SMITH_PLUGIN_ROOT` env var pointing at the same location:
+`--plugin-dir` flag pointing at this plugin source:
 
 ```bash
 cd /path/to/target-repo
-export SMITH_PLUGIN_ROOT=~/StudioProjects/smith-agent
 claude --plugin-dir ~/StudioProjects/smith-agent
 ```
 
@@ -1525,19 +1526,22 @@ The plugin is loaded for that session. All `/smith:<…>` skills, commands,
 and agents are available. `/reload-plugins` picks up edits to the plugin
 source without restarting the session.
 
-**Why the env var:** skill markdown content references
-`$SMITH_PLUGIN_ROOT` in shell commands. Claude Code's
-`${CLAUDE_PLUGIN_ROOT}` substitution applies only to monitor/hook/MCP/LSP
-command strings (see [plugins-reference Environment variables][envvar-doc]);
-skill-driven Bash invocations don't get the substitution. So we use an
-operator-set env var the Bash subprocess inherits naturally.
+**Script invocation: PATH via `bin/`.** Smith's bash helpers live in
+`bin/`, which Claude Code adds to the Bash tool's `PATH` while the
+plugin is enabled (see [plugins-reference][envvar-doc] →
+`bin/` directory). Skills, agents, and commands invoke them by bare
+name (`jira_scan.sh`, `active_smiths.sh count`, …) — no path prefix,
+no env var. Hook and monitor commands in `hooks/hooks.json` and
+`monitors/monitors.json` use the documented `${CLAUDE_PLUGIN_ROOT}/bin/…`
+form because those execution contexts get the substitution but not
+the PATH addition.
 
 [envvar-doc]: https://code.claude.com/docs/en/plugins-reference#environment-variables
 
 A convenient operator alias (in `~/.zshrc`):
 
 ```bash
-alias claude-smith='SMITH_PLUGIN_ROOT=~/StudioProjects/smith-agent claude --plugin-dir ~/StudioProjects/smith-agent'
+alias claude-smith='claude --plugin-dir ~/StudioProjects/smith-agent'
 ```
 
 Then `cd target-repo && claude-smith` is the operator's day-to-day entry
@@ -1582,13 +1586,17 @@ checks the existing `.gitignore` content and won't add a duplicate entry.
 - **Hot reloading.** Edit a skill or agent in the plugin source; run
   `/reload-plugins` in the active session. No re-install.
 
-### 17.5 Spec and plan filenames
+### 17.5 Spec filename
 
-The spec lives at `docs/spec.md` (single canonical name; history via git).
-Plans are dated under `docs/plans/YYYY-MM-DD-<phase>.md`. The
-brainstorming-skill default of `docs/superpowers/specs/YYYY-MM-DD-…-design.md`
-is overridden by this convention because Smith's docs are part of Smith's
-shippable source, not the host project's documentation.
+The design spec lives at `docs/spec.md` (single canonical name; history
+via git). Historical phase plans were removed once the plugin reached
+end-to-end completeness — the build narrative remains in Section 16
+above.
+
+Note: this refers to **this plugin's own docs**, NOT Smith's runtime
+artefacts. Per-ticket spec and plan markdown that Smith writes during
+a run live at `<worktree>/.smith/specs/` and `<worktree>/.smith/plans/`
+(gitignored) — see Section 10.
 
 ## 18. Agent-team runtime mechanics
 

@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-SCRIPT="${ROOT}/scripts/assert_clean_worktree.sh"
+SCRIPT="${ROOT}/bin/assert_clean_worktree.sh"
 
 # Make a throwaway worktree to test in. Use $(mktemp -d) under repo so the
 # script's git rev-parse resolves cleanly.

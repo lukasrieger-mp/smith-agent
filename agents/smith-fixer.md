@@ -34,7 +34,7 @@ the final `smith.outcome` JSON. Prose between tool calls is incidental.
 `{mode: "fixer", pr_number: N, worktree: "<path>", branch: "<task/...>", dry_run: bool, anderson_name: "anderson-fixer-PR-N"}`
 
 The lead pre-created your worktree via
-`scripts/checkout_pr_worktree.sh`. Your branch is already checked out.
+`bin/checkout_pr_worktree.sh`. Your branch is already checked out.
 
 ## Workflow (one round, then exit)
 
@@ -42,14 +42,14 @@ The lead pre-created your worktree via
    the worktree is clean:
    ```
    cd <worktree>
-   bash $SMITH_PLUGIN_ROOT/scripts/assert_target_repo.sh
-   bash $SMITH_PLUGIN_ROOT/scripts/assert_clean_worktree.sh
+   assert_target_repo.sh
+   assert_clean_worktree.sh
    ```
 
 2. **Fetch unresolved threads.** Pull the current state from GitHub
    (the monitor's cached list may be stale by now):
    ```
-   threads=$(bash $SMITH_PLUGIN_ROOT/scripts/gh_pr_unresolved_comments.sh "$pr_number")
+   threads=$(gh_pr_unresolved_comments.sh "$pr_number")
    ```
    If `threads` is `[]`, you have nothing to do. Send `smith.outcome`
    with `result: "degenerate"` and exit. The monitor will fire on the
@@ -102,7 +102,7 @@ The lead pre-created your worktree via
 4. **Resolve dismissed threads.** For every Anderson-approved
    dismissal, post the reply and mark resolved in one step:
    ```
-   bash $SMITH_PLUGIN_ROOT/scripts/gh_resolve_review_thread.sh \
+   gh_resolve_review_thread.sh \
         "$thread_id" "$reply_body"
    ```
    `reply_body` should be 1–3 sentences: the reasoning you proposed
@@ -132,7 +132,7 @@ The lead pre-created your worktree via
    Then:
    ```
    git push
-   bash $SMITH_PLUGIN_ROOT/scripts/pr_comments_reset.sh   # kick the monitor
+   pr_comments_reset.sh   # kick the monitor
    ```
 
 8. **Determine the outcome** based on this round's counts:
@@ -144,19 +144,19 @@ The lead pre-created your worktree via
      round counter one last time before cleanup so the summary
      reflects accurate totals:
      ```
-     bash $SMITH_PLUGIN_ROOT/scripts/pr_fix_round_inc.sh "$pr_number" \
+     pr_fix_round_inc.sh "$pr_number" \
           --fix 0 --dismiss "$dismiss_count"
-     bash $SMITH_PLUGIN_ROOT/scripts/cleanup_pr_state.sh "$pr_number"
+     cleanup_pr_state.sh "$pr_number"
      ```
      Send `smith.outcome` with `result: "converged"`.
 
    - `fix_count > 0 && push_succeeded` → **continuing**. Bump
      counter, trigger Augment, exit:
      ```
-     bash $SMITH_PLUGIN_ROOT/scripts/pr_fix_round_inc.sh "$pr_number" \
+     pr_fix_round_inc.sh "$pr_number" \
           --fix "$fix_count" --dismiss "$dismiss_count"
      gh pr comment "$pr_number" --body "augment review"
-     bash $SMITH_PLUGIN_ROOT/scripts/pr_fix_round_inc.sh "$pr_number" --trigger
+     pr_fix_round_inc.sh "$pr_number" --trigger
      ```
      Send `smith.outcome` with `result: "continuing"`.
 
@@ -213,7 +213,7 @@ Before exit — whether the outcome is `converged`, `continuing`, `stuck`,
 `degenerate`, or `error` — call:
 
 ```
-bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh remove "smith-fixer-$pr_number"
+active_smiths.sh remove "smith-fixer-$pr_number"
 ```
 
 This is in addition to the watchdog's outcome-handler call (the

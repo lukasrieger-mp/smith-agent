@@ -1,17 +1,17 @@
 [
   {
     "name": "jira-candidates",
-    "command": "${CLAUDE_PLUGIN_ROOT}/scripts/monitor_jira.sh",
+    "command": "${CLAUDE_PLUGIN_ROOT}/bin/monitor_jira.sh",
     "description": "New eligible JIRA candidate tickets (sprint, SP ≤ 2, no opt-out labels)"
   },
   {
     "name": "pr-comments",
-    "command": "${CLAUDE_PLUGIN_ROOT}/scripts/monitor_pr_comments.sh",
+    "command": "${CLAUDE_PLUGIN_ROOT}/bin/monitor_pr_comments.sh",
     "description": "New unresolved review comments on Smith-authored draft PRs"
   },
   {
     "name": "stop-sentinel",
-    "command": "${CLAUDE_PLUGIN_ROOT}/scripts/monitor_stop.sh",
+    "command": "${CLAUDE_PLUGIN_ROOT}/bin/monitor_stop.sh",
     "description": "Kill switch — .smith/STOP file requested or lifted"
   }
 ]

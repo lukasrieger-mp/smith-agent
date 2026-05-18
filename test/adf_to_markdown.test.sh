@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-SCRIPT="${ROOT}/scripts/adf_to_markdown.sh"
+SCRIPT="${ROOT}/bin/adf_to_markdown.sh"
 FIX="${SCRIPT_DIR}/fixtures/adf-sample.json"
 
 # Pipe ADF JSON to the script; capture markdown output.

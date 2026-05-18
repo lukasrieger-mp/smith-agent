@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-SCRIPT="${ROOT}/scripts/cleanup_pr_state.sh"
+SCRIPT="${ROOT}/bin/cleanup_pr_state.sh"
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT

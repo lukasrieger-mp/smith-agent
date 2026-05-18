@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-SCRIPT="${ROOT}/scripts/checkout_pr_worktree.sh"
+SCRIPT="${ROOT}/bin/checkout_pr_worktree.sh"
 
 # Stage a fake target repo with an existing remote branch `task/app-1234-foo`
 TMP=$(mktemp -d)

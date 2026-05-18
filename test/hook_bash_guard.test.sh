@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-GUARD="${ROOT}/scripts/hook_bash_guard.sh"
+GUARD="${ROOT}/bin/hook_bash_guard.sh"
 
 # Run guard with a tool_input.command payload and capture stdout.
 run_guard() {

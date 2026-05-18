@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-SCRIPT="${ROOT}/scripts/validate_anderson_reply.sh"
+SCRIPT="${ROOT}/bin/validate_anderson_reply.sh"
 
 run() { bash "$SCRIPT" "$@" 2>&1; }
 

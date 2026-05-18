@@ -11,7 +11,7 @@
 # `git rev-parse --git-common-dir` returns the main repo's `.git`
 # regardless of where we're called from. dirname → the main repo.
 #
-# Usage: target_root=$(bash scripts/resolve_target_root.sh)
+# Usage: target_root=$(resolve_target_root.sh)
 
 set -euo pipefail
 

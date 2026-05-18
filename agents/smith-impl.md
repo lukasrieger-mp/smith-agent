@@ -88,7 +88,7 @@ diff review still runs. Smith MUST mention the `--confident` flag in
 the PR body so the human reviewer knows tests were skipped.
 
 The lead pre-created your worktree and the `task/<key>-<slug>` branch
-before spawning you (via `scripts/make_worktree.sh`). Your worktree
+before spawning you (via `bin/make_worktree.sh`). Your worktree
 exists on disk at the path in your spawn prompt, already checked out
 to the right branch. This is true even when `dry_run = true` — the
 worktree is local-only and reversible, so it's always created.
@@ -137,7 +137,7 @@ operator's audit trail.
 message, before you go idle, call:
 
 ```
-bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh remove "<your-spawn-name>"
+active_smiths.sh remove "<your-spawn-name>"
 ```
 
 This removes you from the lead's active-pair tally so the cap doesn't
@@ -260,8 +260,8 @@ correct, and find a non-destructive alternative.
 
 Before any write to JIRA, git remote, or GitHub:
 
-1. `scripts/assert_target_repo.sh` — confirm you're in the configured target.
-2. `scripts/assert_clean_worktree.sh` — confirm your worktree is clean.
+1. `bin/assert_target_repo.sh` — confirm you're in the configured target.
+2. `bin/assert_clean_worktree.sh` — confirm your worktree is clean.
 3. Re-check the ticket via `acli` — confirm status/assignee match the spawn-prompt expectation.
 
 If any pre-flight fails, return `{result: "stuck", reason: "<pre-flight failure>"}`.

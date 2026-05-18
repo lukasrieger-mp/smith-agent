@@ -28,7 +28,7 @@ Examples:
 1. Look up the active entry to identify the teammates:
 
    ```
-   entry=$(bash $SMITH_PLUGIN_ROOT/scripts/active_smiths.sh list \
+   entry=$(active_smiths.sh list \
            | jq -c --arg subj "$1" '.[] | select(.subject == $subj)')
    ```
 
@@ -58,7 +58,7 @@ Examples:
 3. **Run the cleanup script** to handle filesystem + JIRA state:
 
    ```
-   bash $SMITH_PLUGIN_ROOT/scripts/abort_smith.sh "$1"
+   abort_smith.sh "$1"
    ```
 
    This is idempotent and safe. It will:

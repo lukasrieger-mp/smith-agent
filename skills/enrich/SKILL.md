@@ -34,7 +34,7 @@ state; per-ticket scratch lives in the per-ticket worktree.
 
 ## Original ticket
 
-<verbatim ADF body rendered as Markdown via scripts/adf_to_markdown.sh>
+<verbatim ADF body rendered as Markdown via bin/adf_to_markdown.sh>
 
 ## Smith's reading
 
@@ -72,14 +72,14 @@ the optional Explore subagent dispatch is gated on `dry_run`.
 1. Pre-flight:
    ```
    cd <worktree>
-   bash $SMITH_PLUGIN_ROOT/scripts/assert_target_repo.sh
+   assert_target_repo.sh
    ```
 2. Fetch + flatten + write the brief in one call:
    ```
-   brief_path=$(bash $SMITH_PLUGIN_ROOT/scripts/write_brief.sh "$ticket")
+   brief_path=$(write_brief.sh "$ticket")
    ```
    The script fetches the ticket via `acli`, flattens the ADF
-   `description` to Markdown via `scripts/adf_to_markdown.sh`, and
+   `description` to Markdown via `bin/adf_to_markdown.sh`, and
    writes the structured brief.
 3. Append log:
    ```

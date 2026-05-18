@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-SCRIPT="${ROOT}/scripts/jira_scan.sh"
+SCRIPT="${ROOT}/bin/jira_scan.sh"
 FIX="${SCRIPT_DIR}/fixtures"
 
 # Stub mode returns the fixture content verbatim.

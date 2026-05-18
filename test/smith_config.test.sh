@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-SCRIPT="${ROOT}/scripts/smith_config.sh"
+SCRIPT="${ROOT}/bin/smith_config.sh"
 
 # Isolate state in a temp dir that itself sits inside a git repo (so the
 # script's git-toplevel fallback for default_target_repo works).

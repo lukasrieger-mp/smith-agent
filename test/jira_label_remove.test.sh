@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-SCRIPT="${ROOT}/scripts/jira_label_remove.sh"
+SCRIPT="${ROOT}/bin/jira_label_remove.sh"
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT

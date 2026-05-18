@@ -5,7 +5,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/assert.sh
 source "${SCRIPT_DIR}/lib/assert.sh"
 
-SCRIPT="${ROOT}/scripts/make_worktree.sh"
+SCRIPT="${ROOT}/bin/make_worktree.sh"
 
 # Stage a fake target repo with a fake `origin/develop` branch.
 TMP=$(mktemp -d)
