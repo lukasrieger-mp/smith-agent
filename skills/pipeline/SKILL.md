@@ -59,7 +59,16 @@ it as a fallback, no matter how reasonable it feels.
 3. Wait for Anderson's mailbox reply with `{type: "anderson.review.findings", findings: [...]}`.
    Timeout: 120s. On timeout → `{result: "error", reason: "anderson timeout at spec gate"}`.
 4. Filter for high-severity findings. If empty → commit the spec file
-   (`git add docs/superpowers/specs/<...>-design.md && git commit -m "spec(smith): $ticket"`) and proceed to Gate 2.
+   and proceed to Gate 2. The commit touches only the markdown spec
+   under `docs/superpowers/specs/` — no source code — so run it with
+   `--no-verify` to skip the target repo's git hooks (formatters,
+   linters, build/test pre-commit gates). Those hooks exist to validate
+   code changes; running them on a docs-only commit is pure waste and
+   sometimes a false-positive source.
+   ```
+   git add docs/superpowers/specs/<...>-design.md
+   git commit --no-verify -m "spec(smith): $ticket"
+   ```
 5. Otherwise: address the high findings (edit the spec). Increment
    round. Goto step 2. Cap at 3 rounds.
 6. Divergence guard (spec Section 5.5): if round 2 → 3 high-finding
@@ -71,8 +80,12 @@ it as a fallback, no matter how reasonable it feels.
 
 Same shape as Gate 1, but use `superpowers:writing-plans` to produce
 `<worktree>/docs/superpowers/plans/<date>-<ticket>.md`, and mailbox
-Anderson with `mode: "plan"`. Commit message:
-`plan(smith): $ticket`.
+Anderson with `mode: "plan"`. Commit the plan markdown the same way as
+the spec — docs-only, so skip the target repo's git hooks:
+```
+git add docs/superpowers/plans/<...>.md
+git commit --no-verify -m "plan(smith): $ticket"
+```
 
 ### Gate 3: IMPL
 

@@ -9,6 +9,18 @@ implementer team for a specific JIRA ticket. This is the operator-driven
 manual override path; the watchdog monitors (Section 5.6 of the spec)
 trigger the same flow automatically when new candidates appear.
 
+> **HARD RULE — spawning is via agent-teams, never the Agent/Task tool.**
+> Smith and Anderson must be created as long-lived teammates through
+> natural-language team creation (see "Spawn the teammate pair" below).
+> Do NOT use the `Agent` or `Task` tool to spawn them — that produces
+> one-shot subagents that die after their first reply, breaking the
+> multi-turn mailbox protocol and leaving Smith self-reviewing. A
+> PreToolUse hook (`hook_agent_teams_guard.sh`) will deny any
+> `Agent`/`Task` call whose `subagent_type` is `smith-impl`,
+> `anderson-impl`, `smith-fixer`, or `anderson-fixer`. If you see that
+> denial, re-issue the dispatch using team-creation phrasing; don't try
+> to work around the hook.
+
 ## Arguments
 
 - `$1` (required): JIRA ticket key, e.g. `APP-5601`
@@ -197,7 +209,10 @@ is to wait for Smith's final `{type: "smith.outcome", ...}` message.
 When it arrives, parse the result:
 
 - `success`: print a summary including PR URL, mode, log_entries.
+  Then **arm the fix loop** (see "Arm fix loop on success" below) so
+  reviewer / Augment comments on the new PR get picked up.
 - `stuck`: print the reason and the path to the WIP-stuck PR (if any).
+  Do NOT arm the fix loop — WIP-stuck is a human-handoff path.
 - `error`: per spec Section 8.5, dispatch ONE retry with a fresh teammate
   pair (new names: `smith-impl-<ticket>-retry`, `anderson-impl-<ticket>-retry`).
   If the retry also returns error → escalate to final WIP-stuck.
@@ -207,6 +222,60 @@ When it arrives, parse the result:
 If the team spawn itself fails (rare) or Smith never returns an outcome
 JSON before going idle, treat as `{result: "error", reason: "teammate
 failed to report"}` per spec Section 8.5.
+
+## Arm fix loop on success
+
+After Smith returns `{result: "success", pr_url: ...}` (NOT for `stuck`
+or `error`), arm `pr-only` mode and load the watchdog reaction skill so
+this same lead session can dispatch fixer pairs when reviewer or
+Augment comments arrive on the new PR.
+
+The `smith:pr` skill posted `augment review` as the PR's first comment.
+Without arming, that comment goes into the void — the pr-comments
+monitor is gated on `.smith/state/watchdog-mode` and the lead has no
+reaction-skill runbook loaded. Arming closes the loop.
+
+1. Set the watchdog mode to `pr-only`, but **do not demote `full`** if
+   the operator already explicitly armed full autonomy in this session:
+   ```
+   mkdir -p .smith/state
+   current_mode=$(cat .smith/state/watchdog-mode 2>/dev/null || echo "")
+   if [[ "$current_mode" != "full" ]]; then
+     echo pr-only > .smith/state/watchdog-mode
+   fi
+   ```
+   - File absent → write `pr-only`.
+   - File contains `pr-only` → no-op (overwrite with same).
+   - File contains `full` → leave it (already broader scope).
+
+2. Load the watchdog reaction skill into this session's context so the
+   lead knows how to handle `smith.pr.new_comments` notifications when
+   they arrive:
+   ```
+   Skill watchdog
+   ```
+   (Invoke via the `Skill` tool with `skill: watchdog`. After load,
+   the dispatch sub-routines in `skills/watchdog/SKILL.md` apply for
+   the rest of the session — including the `HARD RULE` about
+   agent-teams spawning.)
+
+3. Print a one-line confirmation in the operator output:
+   ```
+   Fix loop armed (pr-only). Watching PR for reviewer / Augment
+   comments. Disarm with: rm .smith/state/watchdog-mode
+   ```
+
+The JIRA candidates monitor is **separately gated on `full` mode**, so
+arming `pr-only` does NOT start autonomous ticket pickup. Only
+`/smith:watchdog` (with no flag) enables that. The two monitors gate
+asymmetrically on purpose: `/smith:implement` is a one-shot for the
+impl side but a fix-loop entrypoint for the PR side.
+
+The SessionStart hook wipes `.smith/state/watchdog-mode` on every new
+Claude Code session — so the fix-loop arming is per-session, not
+durable. A fresh session in the same target repo will NOT auto-resume
+watching a previously-armed PR. That is intentional: every autonomous
+behaviour must be operator-initiated once per session.
 
 ## Output format
 

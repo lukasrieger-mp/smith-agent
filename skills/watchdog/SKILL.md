@@ -11,7 +11,35 @@ Claude Code session the operator launches via
 counterpart to the `/smith:watchdog` slash command (which arms the
 monitors by writing `.smith/state/watchdog-mode`).
 
+> **HARD RULE — Smith and Anderson are spawned via agent-teams, not
+> via the Agent/Task tool.** When you dispatch a teammate pair in
+> response to a notification, you MUST use natural-language team
+> creation (see "Spawn mechanism" and the dispatch sub-routines
+> below). The `Agent` and `Task` tools create one-shot subagents that
+> die after their first reply — that breaks the mailbox protocol
+> Smith and Anderson use to coordinate across gates. A PreToolUse
+> hook (`scripts/hook_agent_teams_guard.sh`) denies any `Agent`/`Task`
+> call whose `subagent_type` is one of `smith-impl`, `anderson-impl`,
+> `smith-fixer`, `anderson-fixer`. If you trip it, re-dispatch via
+> team creation — do not work around the hook.
+
 For the full architectural picture, see `docs/spec.md` Sections 5 + 18.
+
+## Narration style
+
+You're running an autonomous loop. The operator skims your output once
+a day, not in real time. The durable record is `.smith/log.txt`; chat
+prose is incidental.
+
+- One line per notification + decision: "smith.jira.new_candidates →
+  dispatched smith-impl-APP-1234." That's it.
+- Don't narrate monitor activity ("Polling JIRA…") — monitors poll,
+  you only react to their emitted notifications.
+- Don't recap teammate outcomes — the outcome JSON and the log line
+  are the record. A one-line confirmation is enough.
+- No pre-dispatch preamble. Run pre-flight, spawn the pair, print one
+  line.
+- Silence between notifications is correct. Don't fill it.
 
 ## Role
 
@@ -37,17 +65,28 @@ The cap-count is *not* in working memory — read it fresh from
 `active_smiths.sh count` whenever you need it (defends against
 restart-after-crash and against working memory drift).
 
-## Watchdog mode (from the slash command)
+## Watchdog mode
 
-The `/smith:watchdog` command writes the active mode to
-`.smith/state/watchdog-mode` (either `full` or `pr-only`). Read this
-file fresh whenever a `smith.jira.new_candidates` notification arrives
-— do not cache it. Default to `full` if the file is missing.
+`.smith/state/watchdog-mode` holds either `full` or `pr-only`. It is
+written by:
+
+- `/smith:watchdog` (no flag) → `full`
+- `/smith:watchdog --pr-only` → `pr-only`
+- `/smith:implement` after a successful PR creation → `pr-only` (only
+  if the file is absent; will not demote an existing `full`)
+
+Read this file fresh whenever a `smith.jira.new_candidates`
+notification arrives — do not cache it. Default to `full` if the file
+is somehow missing while this skill is loaded.
 
 In `pr-only` mode, the operator has signalled that they want this
 session to focus on reviewer iteration on existing PRs without
-picking up new tickets. The JIRA monitor still runs and emits
-notifications; the lead simply ignores them.
+picking up new tickets. The JIRA monitor is **gated on `full` mode
+specifically** (see `commands/watchdog.md` for the gating table), so
+in `pr-only` mode the JIRA monitor stays idle and no
+`smith.jira.new_candidates` notifications arrive. The pr-only branch
+in the reaction rule below is therefore a safety net rather than the
+primary suppression.
 
 ## Notification reactions
 

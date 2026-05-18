@@ -51,8 +51,14 @@ if [[ "$ONESHOT" == "1" ]]; then
 fi
 
 while true; do
-  # Gate: only poll JIRA when watchdog is armed.
-  if [[ -f .smith/state/watchdog-mode ]]; then
+  # Gate: only poll JIRA when the watchdog is armed in `full` mode.
+  # `pr-only` (written by `/smith:implement` on success-path PR creation,
+  # or by `/smith:watchdog --pr-only`) deliberately suppresses JIRA
+  # candidate scanning — the lead would ignore the emissions anyway, so
+  # we save the `acli` calls. Only `full` (written by `/smith:watchdog`
+  # with no flag) activates this monitor.
+  mode=$(cat .smith/state/watchdog-mode 2>/dev/null || echo "")
+  if [[ "$mode" == "full" ]]; then
     emit_diff_if_any
   fi
   sleep "$INTERVAL"

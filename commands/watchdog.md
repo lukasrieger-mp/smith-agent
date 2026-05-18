@@ -8,6 +8,20 @@ You (the watchdog lead session) have been asked to arm the autonomous
 watchdog. This is the entry point for Smith's event-driven operation
 (spec Section 5.6).
 
+> **HARD RULE — every Smith and Anderson dispatch goes through
+> agent-teams, never the Agent/Task tool.** When a notification fires
+> and you dispatch a teammate pair, you MUST use natural-language team
+> creation (per `skills/watchdog/SKILL.md` "Spawn mechanism" and
+> `commands/implement.md` "Spawn the teammate pair"). The `Agent` and
+> `Task` tools produce one-shot subagents that exit after their first
+> reply — that would strand Smith with no Anderson at the first review
+> gate. A PreToolUse hook
+> (`scripts/hook_agent_teams_guard.sh`) denies any `Agent`/`Task`
+> call whose `subagent_type` is one of `smith-impl`, `anderson-impl`,
+> `smith-fixer`, `anderson-fixer`. If you see that denial, re-issue
+> the dispatch with team-creation phrasing — do not retry the
+> `Agent`/`Task` path.
+
 ## Arguments
 
 - `$1` (optional): `--pr-only` — only react to `smith.pr.new_comments`
@@ -27,21 +41,26 @@ watchdog. This is the entry point for Smith's event-driven operation
 
 The three plugin monitors (`monitors/monitors.json`) start as background
 processes when Claude Code loads this plugin, but each one **gates its
-work on the presence of `.smith/state/watchdog-mode`**. While that file
-is absent, the monitor processes are running but idle — no `gh` / `acli`
-calls, no state writes. `/smith:watchdog` creates that file (with
-content `full` or `pr-only`), which is what flips the monitors from
-idle to active.
+work on the contents of `.smith/state/watchdog-mode`**. The gating is
+asymmetric across monitors (see table below). While the file is absent,
+all monitors are idle — no `gh` / `acli` calls, no state writes.
+`/smith:watchdog` writes the file (with content `full` or `pr-only`),
+which is what activates the relevant monitors for the chosen scope.
 
 `/smith:watchdog` also loads the reaction skill into the lead session's
 context so the lead knows how to handle incoming notifications.
 
-Background monitors:
+Background monitors and their gating:
+
+| Monitor | Active when `watchdog-mode` is… | Notes |
+|---|---|---|
+| `jira-candidates` | `full` only | Autonomous ticket pickup is an explicit opt-in; `pr-only` does not poll JIRA at all (saves `acli` calls; lead would ignore emissions anyway) |
+| `pr-comments` | `full` OR `pr-only` | Reviewer / Augment iteration on already-open Smith PRs is in scope for both modes |
+| `stop-sentinel` | any value | Kill switch is always honoured once armed |
 
 - `jira-candidates` — polls JIRA every 30 min (configurable via the
   `polling_minutes` user-config); emits `smith.jira.new_candidates`
-  only when a *new* eligible ticket key appears. *Notifications are
-  ignored by the lead when `--pr-only` is active.*
+  only when a *new* eligible ticket key appears.
 - `pr-comments` — polls open Smith-authored PRs every 60 sec (active),
   backing off to 30 min after 30 quiet cycles. Cadence resets on a
   new unresolved thread OR a Smith push (via pr_comments_reset.sh).
@@ -50,6 +69,13 @@ Background monitors:
   with a per-PR round cap of `max_fix_rounds`).
 - `stop-sentinel` — watches `.smith/STOP` every 2 sec; emits
   `smith.stop.requested` or `smith.stop.lifted` on state change.
+
+`/smith:implement` (the manual one-shot path) also writes `pr-only`
+to `watchdog-mode` and loads this reaction skill **after** a
+successful PR creation — so the fix loop engages for that one PR
+without the operator having to run `/smith:watchdog` separately. The
+JIRA monitor stays idle in that case (asymmetric gate), so no
+autonomous ticket pickup happens.
 
 To **disarm** the watchdog without exiting Claude Code:
 ```

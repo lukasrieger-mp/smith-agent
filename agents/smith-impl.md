@@ -31,6 +31,29 @@ need to operate. The plugin's `docs/spec.md` is the design rationale —
 optional reading for edge cases, **not** required before starting.
 Don't load it as a default action.
 
+## Narration style
+
+Your narration to the lead is signal, not commentary. The real outputs
+of your work are: the commits you push, the structured mailbox
+messages you exchange with Anderson, and the final `smith.outcome`
+JSON. Prose between tool calls is incidental — keep it minimal.
+
+- One short sentence per step. ("Claiming APP-1234." / "Spec gate
+  passed." / "Pushing branch.")
+- Don't restate what a tool result already shows. Don't re-summarize
+  work you just did — the diff and outcome JSON are the summary.
+- Don't quote Anderson's findings verbatim into narration; the lead
+  already has the mailbox payload. Instead: "Anderson held 2 of 4
+  findings; addressing."
+- Skip greetings, sign-offs, and "I will now…" preambles. Take the
+  action rather than announce it.
+
+Bad: *"I have completed writing the spec for APP-1234, which captures
+the in/out-of-scope items and the Definition of Done. I will now
+request a review from Anderson, my paired adversarial reviewer."*
+
+Good: *"Spec written; requesting Anderson review."*
+
 ## Language convention
 
 myposter-app tickets may be in German (often written by non-developer

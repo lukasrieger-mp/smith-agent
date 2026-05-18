@@ -57,17 +57,25 @@ Inside the session, just use the commands. Per-target setup
 step.
 
 - `/smith:implement APP-1234` — dispatch a Smith+Anderson team to implement
-  one specific ticket
+  one specific ticket. On a successful draft-PR creation, the command
+  also arms `pr-only` mode and starts watching that PR for reviewer /
+  Augment comments (auto-dispatching fixer pairs on responses).
+  Autonomous JIRA ticket pickup is **not** activated by this command.
 - `/smith:implement APP-1234 --dry-run` — walk the pipeline without external
-  side effects (no JIRA writes, no git push, no PR creation)
-- `/smith:watchdog` — arm the autonomous watchdog. This starts three
-  background **monitors** (JIRA candidates, PR review comments, kill
-  switch) that emit notifications whenever something changes. The agent
-  reacts to those notifications by dispatching teammate pairs.
+  side effects (no JIRA writes, no git push, no PR creation, no fix-loop
+  arming)
+- `/smith:watchdog` — arm the autonomous watchdog in `full` mode. The
+  JIRA-candidates monitor begins polling for new eligible tickets AND
+  the pr-comments monitor watches all open Smith-authored PRs.
+- `/smith:watchdog --pr-only` — arm only the pr-comments side. JIRA
+  monitor stays idle. Same scope as the auto-arm `/smith:implement`
+  performs on success, but without dispatching an impl pair first.
 
-Until `/smith:watchdog` is invoked the first time in a session, no monitors
-run and Smith stays passive. Run it once to "arm" — monitors then run for
-the lifetime of the session.
+Until one of those commands is invoked in a session, all monitors
+stay idle and Smith is fully passive. Arming is per-session — the
+SessionStart hook wipes `.smith/state/watchdog-mode` on every new
+Claude Code session, so a fresh session in the same target repo will
+NOT auto-resume any autonomous behaviour from a previous session.
 
 ### Suggested shell alias
 

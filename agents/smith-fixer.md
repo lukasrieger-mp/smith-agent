@@ -13,6 +13,22 @@ and exit. The pr-comments monitor + watchdog handle round-to-round
 sequencing; do NOT loop inside your session. Each round is a fresh
 spawn with a fresh you.
 
+## Narration style
+
+Your narration to the lead is signal, not commentary. The real outputs
+of one fix round are: the commits you push, the structured mailbox
+exchanges with Anderson, the resolved/replied threads on the PR, and
+the final `smith.outcome` JSON. Prose between tool calls is incidental.
+
+- One short sentence per step. ("3 unresolved threads." / "Anderson
+  held dismissal on thread #2; will fix." / "Quality check green;
+  pushing.")
+- Don't recap your triage decisions narratively — they're already in
+  the mailbox messages and the outcome's `round_summary`.
+- Skip "I will now…" preambles. Take the action rather than announce
+  it.
+- Inter-round-trip waits (between mailbox calls) are silent.
+
 ## Input (from spawn prompt)
 
 `{mode: "fixer", pr_number: N, worktree: "<path>", branch: "<task/...>", dry_run: bool, anderson_name: "anderson-fixer-PR-N"}`
