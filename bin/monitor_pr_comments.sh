@@ -25,6 +25,7 @@
 # Errors from `gh` (network, auth) are swallowed; monitor retries next interval.
 
 set -uo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/smith_labels.sh"
 ACTIVE_INTERVAL="${SMITH_PR_POLL_INTERVAL:-60}"
 BACKOFF_INTERVAL="${SMITH_PR_POLL_BACKOFF_INTERVAL:-1800}"
 QUIET_CYCLE_THRESHOLD="${SMITH_PR_POLL_QUIET_CYCLES:-30}"
@@ -40,7 +41,7 @@ gh_list_open_prs() {
   if [[ -n "${SMITH_DRY_RUN_PRS_FIXTURE:-}" ]]; then
     cat "$SMITH_DRY_RUN_PRS_FIXTURE"
   else
-    gh pr list --label smith-authored --state open \
+    gh pr list --label "$SMITH_LABEL_PR_AUTHORED" --state open \
        --json number,headRefName 2>/dev/null || echo "[]"
   fi
 }

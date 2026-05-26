@@ -75,7 +75,7 @@ green. Open a normal draft PR.
      --body "$body" \
      --base develop \
      --head "$branch" \
-     --label smith-authored
+     --label "$(smith_labels.sh PR_AUTHORED)"
    ```
    Capture the PR URL from `gh`'s stdout.
 6. **Trigger the Augment review bot.** Post a comment on the new PR
@@ -92,7 +92,7 @@ green. Open a normal draft PR.
    ```
 7. Remove the `smith-implementing` JIRA label:
    ```
-   acli jira workitem edit --key "$ticket" --label-remove smith-implementing
+   acli jira workitem edit --key "$ticket" --label-remove "$(smith_labels.sh JIRA_IMPLEMENTING)"
    ```
 8. Append log:
    ```
@@ -157,16 +157,16 @@ human will need.
      --body "$body" \
      --base develop \
      --head "$branch" \
-     --label smith-authored \
-     --label needs-human-attention
+     --label "$(smith_labels.sh PR_AUTHORED)" \
+     --label "$(smith_labels.sh PR_NEEDS_ATTENTION)"
    ```
    Note: do NOT post "augment review" — this PR is being handed to a
    human. The needs-human-attention label is the signal.
 7. **Swap the JIRA labels**:
    ```
    acli jira workitem edit --key "$ticket" \
-        --label-remove smith-implementing \
-        --label-add auto-impl-failed
+        --label-remove "$(smith_labels.sh JIRA_IMPLEMENTING)" \
+        --label-add "$(smith_labels.sh JIRA_FAILED)"
    ```
    **Do not** post a JIRA comment (per spec Section 6.6 — labels carry
    the signal; the PR body holds the narrative).

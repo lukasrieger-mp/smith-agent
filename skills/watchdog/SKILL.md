@@ -204,7 +204,7 @@ the fixer pair handles both equally.
    fi
    if (( current_rounds >= max_rounds )); then
      # Escalate. Add the label and post a comment naming the cap.
-     gh pr edit "$pr" --add-label needs-human-attention
+     gh pr edit "$pr" --add-label "$(smith_labels.sh PR_NEEDS_ATTENTION)"
      gh pr comment "$pr" --body \
        "Smith fix loop reached $max_rounds rounds without converging. \
    Current unresolved threads need human review. \

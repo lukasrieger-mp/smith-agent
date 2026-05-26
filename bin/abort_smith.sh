@@ -31,6 +31,7 @@ set -euo pipefail
 SUBJECT="${1:?usage: abort_smith.sh <SUBJECT>}"
 
 plugin_scripts=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+. "$plugin_scripts/smith_labels.sh"
 target_root=$(git rev-parse --show-toplevel)
 cd "$target_root"
 
@@ -102,8 +103,8 @@ if [[ "$mode" == "impl" ]]; then
   fi
 
   # Label remove is itself idempotent
-  if bash "$plugin_scripts/jira_label_remove.sh" "$SUBJECT" smith-implementing >/dev/null 2>&1; then
-    echo "  ✓ smith-implementing label state cleaned (was either removed or not present)"
+  if bash "$plugin_scripts/jira_label_remove.sh" "$SUBJECT" "$SMITH_LABEL_JIRA_IMPLEMENTING" >/dev/null 2>&1; then
+    echo "  ✓ $SMITH_LABEL_JIRA_IMPLEMENTING label state cleaned (was either removed or not present)"
   fi
 fi
 

@@ -11,6 +11,8 @@
 
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/smith_labels.sh"
+
 ensure_label() {
   local name="$1" desc="$2" color="$3"
   if [[ "${SMITH_DRY_RUN_GH_ENSURE_LABELS:-0}" == "1" ]]; then
@@ -23,10 +25,10 @@ ensure_label() {
     >/dev/null 2>&1 || true
 }
 
-ensure_label smith-authored \
+ensure_label "$SMITH_LABEL_PR_AUTHORED" \
   "PR opened by Smith autonomous agent" \
   8B7AB6
 
-ensure_label needs-human-attention \
+ensure_label "$SMITH_LABEL_PR_NEEDS_ATTENTION" \
   "Smith got stuck; requires human review" \
   D93F0B

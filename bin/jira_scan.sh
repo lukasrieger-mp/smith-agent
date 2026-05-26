@@ -20,6 +20,8 @@ fi
 PLUGIN_SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 config_get() { bash "$PLUGIN_SCRIPTS/smith_config.sh" "$1"; }
 
+. "$PLUGIN_SCRIPTS/smith_labels.sh"
+
 project=$(config_get jira_project_key)
 status=$(config_get eligible_status)
 sp_field=$(config_get story_points_field)
@@ -29,7 +31,7 @@ jql="assignee = currentUser() \
   AND status = \"$status\" \
   AND sprint in openSprints() \
   AND \"Story Points\" <= 2 \
-  AND labels not in (auto-impl-failed, smith-implementing, no-auto-impl) \
+  AND labels not in ($SMITH_LABEL_JIRA_FAILED, $SMITH_LABEL_JIRA_IMPLEMENTING, $SMITH_LABEL_JIRA_NO_AUTO) \
   AND project = $project \
   ORDER BY priority DESC, created ASC"
 

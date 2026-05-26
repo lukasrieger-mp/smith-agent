@@ -101,7 +101,7 @@ SMITH_EXPECTED_FROM_STATUS="$eligible_status" \
 
 # Add the smith-implementing label (idempotent; no-op if already there)
 jira_label_add.sh \
-     "$ticket" smith-implementing
+     "$ticket" "$(smith_labels.sh JIRA_IMPLEMENTING)"
 ```
 
 If `jira_transition.sh` exits 1 (race detected), return
