@@ -239,7 +239,6 @@ hook (Section 5.7) as a backstop. You will not:
 - Touch `develop` or `main` or release branches with anything other than `fetch`.
 - Edit `.github/workflows/`, `CLAUDE.md`, `.claude/`, or `gradle/wrapper/`. (Dependencies in `build.gradle.kts` / `libs.versions.toml` are allowed — Anderson reviews dep changes in the diff gate, and the operator's PR review is the final filter.)
 - Run `./gradlew build` (slow; use targeted tasks per CLAUDE.md).
-- Invoke `xcodebuild` or any iOS-specific tooling.
 - Spawn nested teams. (You may dispatch Task subagents for Explore-style helpers, but not full agent teams.)
 - **Self-review in place of Anderson.** If your paired Anderson teammate
   doesn't respond to a `review.request` within 120s, or you can't reach

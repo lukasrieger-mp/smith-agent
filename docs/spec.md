@@ -83,7 +83,6 @@ Section 13.
   agent's head
 
 ### Out of scope (non-goals)
-- iOS-only tickets (operator is not responsible for iOS work)
 - Marking PRs ready-for-review or merging — humans only
 - JIRA workflow transitions beyond `Ready for Development` → `In Progress`
 - CI changes (`.github/workflows/`), Gradle-wrapper bumps, edits to
@@ -91,7 +90,6 @@ Section 13.
   `build.gradle.kts` / `libs.versions.toml` are allowed but reviewed
   in the diff gate; see Section 8.2 Anderson lenses.)
 - Releases, tag pushes, main-branch operations
-- iOS builds — Smith never invokes Xcode
 - Anything that requires interactive auth (operator runs `acli jira auth login`
   and `gh auth login` manually)
 
@@ -535,33 +533,20 @@ persona must not call `acli jira workitem comment` for routine state
 changes. The only label operations they perform are documented in 6.5;
 status transitions are limited to the one in 6.4.
 
-### 6.7 Platform classification
+### 6.7 No platform filter
 
-Two-step decision in `smith:watchdog` and `/smith:implement` pre-flight:
+Smith does not filter candidate tickets by platform (Android / KMP / iOS).
+The JQL in 6.1 already restricts pickup to tickets that are (a) assigned
+to the operator, (b) small enough by story points, and (c) in the
+eligible status — i.e. tickets the operator has explicitly marked as
+ones they want a Smith pair to attempt. Adding a platform filter on top
+would redundantly second-guess that signal and would exclude operators
+whose ticket queue is primarily iOS.
 
-1. **Read both the ticket's `components` field AND its `labels` field**,
-   union them into one set of platform-marker strings. Some teams put
-   platform info in components, some in labels, some in both. The
-   classifier doesn't care — it gets the union.
-   Pipe the merged array to `scripts/classify_platform.sh`. Decision:
-   - Result `kmp` (any of `Shared/KMP`, `KMP`, `Shared`, `Multiplatform`
-     present) → **accept** as KMP work
-   - Result `android` → **accept** as Android work
-   - Result `ios` (only iOS markers present) → **reject**, never touch
-   - Result `unclear` (no recognized markers) → fall through to step 2
-2. Spawn a lightweight classifier subagent on the ticket's `summary` +
-   `description`, asking for `{ios|android|kmp|unclear}`. Reject only
-   on `ios`; treat `unclear` as eligible (Anderson will catch scope
-   drift later if it turns out to be iOS).
-
-A second iOS check fires after enrichment: if the `Explore` subagent's
-suspected-affected-files set is > 50 % `ios-app/`, abort the pipeline to the
-WIP-stuck path before any code is written.
-
-**Why `Multiplatform` → `kmp`**: tickets tagged Multiplatform typically
-span iOS + Android + shared code. Smith starts in the shared/KMP layer
-(work most likely to land cleanly) and the post-enrichment safety net
-catches mis-tagged iOS-heavy tickets.
+If a ticket turns out to be a poor fit for autonomous implementation
+regardless of platform, the existing escape hatches still apply: the
+operator can label the ticket `no-auto-impl` to opt it out, or
+`/smith:abort <KEY>` once a pair is in flight.
 
 ## 7. Git integration
 
@@ -838,8 +823,6 @@ Mediated by `scripts/run-silent.sh` per the agent repo's `CLAUDE.md`. Strictly:
 ### 9.2 What Smith never runs
 
 - `./gradlew build` (per CLAUDE.md)
-- Any iOS build / Xcode invocation (the `xcodebuild` command from CLAUDE.md is
-  off-limits)
 - Maestro / instrumentation tests (out of scope for now)
 - Any command outside the agent repo's working directory
 
@@ -999,8 +982,7 @@ against the previous poll, so notifications only fire on *change*.
 - **Side effects:** JIRA status `Ready for Development` → `In Progress`;
   label `smith-implementing` added; new branch created from `origin/develop`
   inside the Smith's worktree.
-- **Aborts on:** failing pre-flight (Section 7.4); status race; classifier
-  reports iOS-only.
+- **Aborts on:** failing pre-flight (Section 7.4); status race.
 
 #### 11.2.2 `smith:enrich`
 
@@ -1064,7 +1046,6 @@ fresh fixer pair on each `smith.pr.new_comments` notification.
 Used by both the lead and teammates. Pure bash functions, no LLM involvement.
 
 - `jira_scan.sh` — runs the JQL (current-sprint scoped), returns candidate JSON.
-- `classify_platform.sh` — components → platform tag; ambiguous → `unclear`.
 - `make_branch_name.sh` — generates `task/<key>-<slug>` consistently.
 - `assert_clean_worktree.sh` — refuses if working tree dirty.
 - `assert_target_repo.sh` — refuses to run outside the configured target repo.
@@ -1076,7 +1057,6 @@ Used by both the lead and teammates. Pure bash functions, no LLM involvement.
 
 ### 12.1 Things Smith never does
 
-- iOS work (covered by 6.7 + 9.2)
 - `gh pr ready` (no marking ready-for-review)
 - `gh pr merge` (no merging, ever)
 - JIRA transitions other than `Ready for Development` → `In Progress`
@@ -1086,19 +1066,14 @@ Used by both the lead and teammates. Pure bash functions, no LLM involvement.
   diff gate; operator filters at PR review).
 - Force-push, rebase of pushed branches
 - GitHub releases, tag pushes, operations on `develop` / `main`
-- Touching the iOS keystore or any `*.jks` / signing config
+- Touching any signing config (`*.jks`, keystore files, provisioning
+  profiles, signing identities)
 
 ### 12.2 Pre-flight (`smith:claim`)
 
 See Section 7.4.
 
-### 12.3 iOS belt-and-braces
-
-- Component classification rejects pure-iOS tickets (Section 6.7)
-- Post-enrichment 50% threshold on `ios-app/` files (Section 6.7)
-- `smith:pr` refuses to open a *non-WIP* PR if the diff is iOS-only
-
-### 12.4 Anti-runaway
+### 12.3 Anti-runaway
 
 Iteration-based, not token-based. The full ceiling set is documented in
 Section 5.5; reproduced here as the safety contract:
@@ -1120,7 +1095,7 @@ non-converging design; build wall-clock catches flaky-test or compile-loop
 death spirals; PR fix-cycles catch reviewers who keep pushing back on the
 same issue Smith can't address; rebase cap catches merge-conflict spirals.
 
-### 12.5 Crash recovery
+### 12.4 Crash recovery
 
 - Watchdog restart re-derives state from JIRA + git + GitHub
 - Branch + `smith-implementing` label + no PR → resume `smith:pipeline`
@@ -1328,9 +1303,9 @@ If any self-audit fails, halt and log; do not attempt remediation.
 
 ### 14.1 Script-level tests
 
-`jira_scan.sh`, `classify_platform.sh`, `make_branch_name.sh`,
-`assert_clean_worktree.sh`, `promote_smith_artifacts.sh` are deterministic
-functions over JSON / filesystem input. Tested via:
+`jira_scan.sh`, `make_branch_name.sh`, `assert_clean_worktree.sh`,
+`promote_smith_artifacts.sh` are deterministic functions over JSON /
+filesystem input. Tested via:
 
 - Fixture JSON under `test/fixtures/`
 - `test.sh` per skill running each script against fixtures and asserting on
@@ -1381,7 +1356,7 @@ This spec is a single coherent design, but the implementation plan should
 decompose into phases that can be built and verified independently:
 
 1. **Phase 1 — Skeleton + plugin-load end-to-end.** Plugin scaffold, pure
-   scripts (`make_branch_name`, `classify_platform`, `assert_*`,
+   scripts (`make_branch_name`, `assert_*`,
    `smith_config` with lazy gitignore management, `jira_scan` stub),
    Anderson + Smith agent definitions (placeholder review behaviour), six
    SKILL.md skeletons, two slash commands. Goal: prove the file structure
@@ -1472,7 +1447,6 @@ modifications beyond the runtime state directory.
     monitors.json                Background monitors (Section 5.6)
   scripts/                       Shared bash helpers (Section 11.3)
     make_branch_name.sh
-    classify_platform.sh
     assert_clean_worktree.sh
     assert_target_repo.sh
     smith_config.sh
@@ -1703,7 +1677,7 @@ can have team-level failures:
   lead handles per Section 8.5.
 - **Lead session dies**: operator restarts via `/smith:watchdog`. On restart,
   the new lead has no team and no teammates. The reconciliation logic
-  (Section 12.5) finds any orphaned worktrees and either resumes them by
+  (Section 12.4) finds any orphaned worktrees and either resumes them by
   spawning fresh teammate pairs or marks them WIP-stuck. **Caveat from the
   agent-teams doc**: in-process teammate sessions are not resumable; the
   new lead always starts with fresh teammates.

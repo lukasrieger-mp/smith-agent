@@ -158,8 +158,7 @@ the dispatch will silently degrade).
 ### `dispatch_impl_mode <key>`
 
 1. Run `/smith:implement <key>`'s pre-flight (assert_target_repo,
-   acli verify, classify_platform) inline. If pre-flight rejects,
-   log and return.
+   acli verify) inline. If pre-flight rejects, log and return.
 2. Compute branch name with `make_branch_name.sh`.
 3. Create the worktree with `make_worktree.sh <key> <branch>`.
 4. Spawn the teammate pair (`smith-impl-<key>`, `anderson-impl-<key>`) via the
