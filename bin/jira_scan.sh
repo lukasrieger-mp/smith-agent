@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# Scan JIRA for candidate tickets. Phase 1: stub mode via SMITH_DRY_RUN_FIXTURE.
-# Real-mode (acli + JQL) included; exercised in Phase 2.
+# Scan JIRA for candidate tickets and return them as a JSON array.
+#
+# Supports a stub mode for tests: set SMITH_DRY_RUN_FIXTURE=<path>
+# and the script returns the fixture JSON verbatim instead of querying
+# acli.
 set -euo pipefail
 
 # Stub mode short-circuit
@@ -13,7 +16,6 @@ if [[ -n "${SMITH_DRY_RUN_FIXTURE:-}" ]]; then
   exit 0
 fi
 
-# Real mode (Phase 2 will validate this path end-to-end).
 # Resolve our sibling scripts via the script's own directory, so jira_scan
 # works when called from within a target repo (where git toplevel = target,
 # not the plugin source).

@@ -1,0 +1,16 @@
+[
+  {
+    "path": "app/feature/skeleton/SkeletonLoader.kt",
+    "line_range": "42-90",
+    "why": "current entry point for the skeleton loader composable"
+  },
+  {
+    "path": "shared/repo/CacheStore.kt",
+    "why": "cached-visit signal source; expose hasFreshCache() for the loader to consume"
+  },
+  {
+    "path": "app/feature/skeleton/SkeletonLoaderTest.kt",
+    "line_range": "10-60",
+    "why": "existing unit tests; extend with cached-visit case"
+  }
+]

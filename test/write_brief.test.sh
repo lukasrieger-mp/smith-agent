@@ -46,6 +46,31 @@ assert_contains "$content" "Android" "components"
 bash "$SCRIPT" APP-5601 >/dev/null
 assert_exit_code 0 $? "idempotent"
 
+# Without affected-files JSON, the bullet stays a placeholder.
+assert_contains "$content" "**Suspected affected files**: _to be filled in_" "affected-files-placeholder"
+
+# With a valid affected-files JSON, the bullet renders as a sub-list
+# with one item per entry.
+brief_path=$(bash "$SCRIPT" APP-5601 "${SCRIPT_DIR}/fixtures/affected-files-sample.json")
+content=$(cat "$brief_path")
+assert_contains "$content" "- **Suspected affected files**:" "affected-files-header"
+assert_contains "$content" "  - app/feature/skeleton/SkeletonLoader.kt:42-90 — current entry point for the skeleton loader composable" "affected-files-with-range"
+assert_contains "$content" "  - shared/repo/CacheStore.kt — cached-visit signal source" "affected-files-no-range"
+
+# Empty array renders as a marked-empty bullet, not a placeholder.
+EMPTY_JSON=$(mktemp); echo '[]' > "$EMPTY_JSON"
+brief_path=$(bash "$SCRIPT" APP-5601 "$EMPTY_JSON")
+content=$(cat "$brief_path")
+assert_contains "$content" "**Suspected affected files**: _(none identified)_" "affected-files-empty"
+rm -f "$EMPTY_JSON"
+
+# Malformed JSON falls back to the placeholder (defensive — don't fail the pipeline).
+BAD_JSON=$(mktemp); echo 'not json' > "$BAD_JSON"
+brief_path=$(bash "$SCRIPT" APP-5601 "$BAD_JSON")
+content=$(cat "$brief_path")
+assert_contains "$content" "**Suspected affected files**: _to be filled in_" "affected-files-malformed-fallback"
+rm -f "$BAD_JSON"
+
 # Missing arg
 if bash "$SCRIPT" 2>/dev/null; then echo "FAIL: missing arg" >&2; exit 1; fi
 

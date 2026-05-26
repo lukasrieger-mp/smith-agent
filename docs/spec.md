@@ -1366,13 +1366,13 @@ decompose into phases that can be built and verified independently:
 2. **Phase 1.5 — Full SKILL rewrite. ✅ DONE.** The agent-teams pivot
    triggered a rewrite of the SKILL.md skeletons and slash commands.
    Phase 1.5 finished those rewrites with the agent-team model in mind.
-3. **Phase 2 — Live `smith:claim` + `smith:enrich`. ✅ MOSTLY DONE.** Real
+3. **Phase 2 — Live `smith:claim` + `smith:enrich`. ✅ DONE.** Real
    JIRA writes via `acli` (status transition + idempotent label add),
    real worktree creation from `origin/develop`, real brief writing with
    ADF→Markdown flattening. Live behaviour gated on `dry_run=false`.
-   Deferred to Phase 2.x: the Explore subagent integration that fills in
-   the "Smith's reading" section of the brief with affected-files
-   analysis.
+   The Explore subagent integration that fills in the brief's
+   "Suspected affected files" bullet with orientation hints is wired
+   up in `skills/enrich/SKILL.md` and skipped under `dry_run=true`.
 4. **Phase 3 — Live `smith:pipeline` with collaborative critic loop. ✅
    DONE.** Anderson runs the real critic prompt (three review modes,
    confidence-≥80 scoring, structured JSON mailbox replies). Smith
@@ -1410,9 +1410,8 @@ decompose into phases that can be built and verified independently:
    autonomously after a single `/smith:watchdog` invocation.
 
 With Phase 6 done, all seven phases are complete. Smith is functionally
-end-to-end autonomous. Outstanding: Phase 2.x (Explore subagent for
-brief enrichment) and integration testing against real tickets to
-validate LLM-driven orchestration behaviour.
+end-to-end autonomous. Outstanding: integration testing against real
+tickets to validate LLM-driven orchestration behaviour.
 
 ## 17. Source layout and packaging
 
