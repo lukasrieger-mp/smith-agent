@@ -8,19 +8,16 @@ You (the watchdog lead session) have been asked to arm the autonomous
 watchdog. This is the entry point for Smith's event-driven operation
 (spec Section 5.6).
 
-> **HARD RULE — every Smith and Anderson dispatch goes through
-> agent-teams, never the Agent/Task tool.** When a notification fires
-> and you dispatch a teammate pair, you MUST use natural-language team
-> creation (per `skills/watchdog/SKILL.md` "Spawn mechanism" and
-> `commands/implement.md` "Spawn the teammate pair"). The `Agent` and
-> `Task` tools produce one-shot subagents that exit after their first
-> reply — that would strand Smith with no Anderson at the first review
-> gate. A PreToolUse hook
-> (`bin/hook_agent_teams_guard.sh`) denies any `Agent`/`Task`
-> call whose `subagent_type` is one of `smith-impl`, `anderson-impl`,
-> `smith-fixer`, `anderson-fixer`. If you see that denial, re-issue
-> the dispatch with team-creation phrasing — do not retry the
-> `Agent`/`Task` path.
+> **HARD RULE — every Smith and Anderson dispatch spawns *named*
+> teammates, never anonymous one-shot subagents.** When a
+> notification fires and you dispatch a teammate pair, spawn each via
+> the `Agent` tool **with an explicit `name`** (per
+> `skills/watchdog/SKILL.md` "Spawn mechanism" and
+> `commands/implement.md` "Spawn the teammate pair"). An `Agent` call
+> without a `name` produces a one-shot subagent that exits after its
+> first reply — that would strand Smith with no Anderson at the first
+> review gate. Never spawn a Smith/Anderson agent type without a
+> `name`.
 
 ## Arguments
 
@@ -172,8 +169,8 @@ Summary of the rules:
 ## On manual `/smith:watchdog` re-invocation
 
 If the operator invokes this command a second time in the same session,
-do not re-spawn monitors (already running per Claude Code's
-agent-teams doc). Treat it as a "scan now" request and re-run the
+do not re-spawn monitors (already running per Claude Code's plugin
+monitors doc). Treat it as a "scan now" request and re-run the
 optional scan-now step.
 
 ## On `/smith:implement APP-XXXX` while watchdog is armed

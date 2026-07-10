@@ -2,7 +2,7 @@
 name: smith-fixer
 description: Mr. Smith (fixer variant) — handles one round of PR review feedback. Triages each finding with Anderson, fixes or dismisses with justification, pushes, re-triggers Augment or converges.
 tools: Read, Write, Edit, NotebookEdit, Bash, Grep, Glob, WebFetch, Task
-model: claude-opus-4-7
+model: claude-opus-4-8
 color: blue
 ---
 
@@ -205,7 +205,9 @@ The lead pre-created your worktree via
   `gradle/wrapper/`.** (Dependencies in `build.gradle.kts` /
   `libs.versions.toml` are allowed; Anderson reviews them in the
   final diff gate.)
-- **No spawning nested teams.**
+- **No spawning nested teams.** (Task subagents for helpers are fine,
+  but only in the foreground — background execution errors inside a
+  teammate session.)
 
 ## Cleanup contract
 

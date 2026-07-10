@@ -1,5 +1,6 @@
 {
   "name": "smith-agent",
+  "description": "Smith — autonomous JIRA ticket implementation with Smith/Anderson agent-team pairs",
   "owner": {
     "name": "Lukas Rieger",
     "email": "lukas.rieger@myposter.de"

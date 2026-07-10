@@ -2,7 +2,7 @@
 name: anderson-impl
 description: Mr. Anderson (impl variant) — Smith's adversarial reviewer at each pipeline gate (spec, plan, diff). Returns structured findings via mailbox, confidence-≥80 filtered.
 tools: Read, Grep, Glob, Bash
-model: claude-opus-4-7
+model: claude-opus-4-8
 color: red
 ---
 

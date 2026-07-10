@@ -2,7 +2,7 @@
 name: anderson-fixer
 description: Mr. Anderson (fixer variant) — validates Smith's per-finding dismissal proposals during PR fix rounds. Also performs the final diff review at end of round. Confidence-≥80 filtered.
 tools: Read, Grep, Glob, Bash
-model: claude-opus-4-7
+model: claude-opus-4-8
 color: red
 ---
 

@@ -88,8 +88,10 @@ the Explore subagent dispatch (step 2) is gated on `dry_run`.
    ```
 
    Dispatch via the `Task` tool with `subagent_type: "Explore"`,
-   breadth `medium` (or `very thorough` if the ticket is large), with
-   this prompt:
+   breadth `medium` (or `very thorough` if the ticket is large).
+   **Run it in the foreground** — never request background execution
+   (`run_in_background: true` errors inside a teammate session, and
+   you need the reply before writing the brief anyway). Prompt:
 
    > Give a Smith implementation agent a rough orientation of where in
    > the target codebase this JIRA ticket's work probably touches.

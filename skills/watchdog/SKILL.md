@@ -11,17 +11,16 @@ Claude Code session the operator launches via
 counterpart to the `/smith:watchdog` slash command (which arms the
 monitors by writing `.smith/state/watchdog-mode`).
 
-> **HARD RULE — Smith and Anderson are spawned via agent-teams, not
-> via the Agent/Task tool.** When you dispatch a teammate pair in
-> response to a notification, you MUST use natural-language team
-> creation (see "Spawn mechanism" and the dispatch sub-routines
-> below). The `Agent` and `Task` tools create one-shot subagents that
-> die after their first reply — that breaks the mailbox protocol
-> Smith and Anderson use to coordinate across gates. A PreToolUse
-> hook (`bin/hook_agent_teams_guard.sh`) denies any `Agent`/`Task`
-> call whose `subagent_type` is one of `smith-impl`, `anderson-impl`,
-> `smith-fixer`, `anderson-fixer`. If you trip it, re-dispatch via
-> team creation — do not work around the hook.
+> **HARD RULE — Smith and Anderson are spawned as *named* teammates,
+> never as anonymous one-shot subagents.** When you dispatch a
+> teammate pair in response to a notification, spawn each via the
+> `Agent` tool **with an explicit `name` parameter** (see "Spawn
+> mechanism" and the dispatch sub-routines below). A named Agent
+> spawn creates a long-lived teammate on the session's implicit team;
+> an Agent call without a `name` creates a one-shot subagent that
+> dies after its first reply — that breaks the mailbox protocol Smith
+> and Anderson use to coordinate across gates. Never spawn a
+> Smith/Anderson agent type without a `name`.
 
 For the full architectural picture, see `docs/spec.md` Sections 5 + 18.
 
@@ -145,15 +144,17 @@ log "stop lifted — resuming new dispatches"
 These are not separate skills — they are the same flow `/smith:implement`
 already documents in its slash command body. The watchdog inlines them.
 
-**Spawn mechanism: agent-teams, not the `Agent` tool.** Smith and
-Anderson must be spawned as long-lived teammates via the agent-teams
-mechanism (natural-language team creation per
-`docs/agent-teams` — see the example phrasing in
-`commands/implement.md`). The plain `Agent` tool produces one-shot
-subagents that exit after their first turn and would strand Smith with
+**Spawn mechanism: `Agent` tool with a `name`.** Smith and Anderson
+must be spawned as long-lived teammates: one `Agent` call per
+teammate, each with `subagent_type`, an explicit **`name`**, and the
+spawn prompt (see the spawn section in `commands/implement.md` for
+the full prompt structure). Both calls go in the same message so the
+pair comes up concurrently. The `name` parameter is what makes the
+spawn a teammate on the session's implicit team instead of a one-shot
+subagent that exits after its first turn and would strand Smith with
 no Anderson at the first review gate. The agent-teams flag must be
 enabled (the watchdog command's pre-flight verifies this; without it,
-the dispatch will silently degrade).
+teammate spawning is unavailable).
 
 ### `dispatch_impl_mode <key>`
 
@@ -161,14 +162,15 @@ the dispatch will silently degrade).
    acli verify) inline. If pre-flight rejects, log and return.
 2. Compute branch name with `make_branch_name.sh`.
 3. Create the worktree with `make_worktree.sh <key> <branch>`.
-4. Spawn the teammate pair (`smith-impl-<key>`, `anderson-impl-<key>`) via the
-   agent-teams API. Spawn prompt per spec Section 18.3, mode=ticket.
-   **Both spawns are required.** After spawning, list active teammates
-   and confirm both names came up — a missing Anderson means Smith
-   will abort the ticket with `{result: "error", reason: "anderson
-   not reachable"}`, wasting the slot. If one didn't spawn, retry it;
-   if still missing, do not register the pair, log
-   `dispatch.failed-pair-spawn`, and return.
+4. Spawn the teammate pair (`smith-impl-<key>`, `anderson-impl-<key>`) via two
+   named `Agent` calls in one message. Spawn prompt per spec Section
+   18.3, mode=ticket. **Both spawns are required.** Confirm both
+   `Agent` calls returned a successful spawn result — a missing
+   Anderson means Smith will abort the ticket with `{result: "error",
+   reason: "anderson not reachable"}`, wasting the slot. If one
+   didn't spawn, retry that one call (same `name`); if still missing,
+   do not register the pair, log `dispatch.failed-pair-spawn`, and
+   return.
 5. Register the pair:
    ```
    active_smiths.sh add \
@@ -230,9 +232,9 @@ the fixer pair handles both equally.
 
 6. Spawn the fixer pair — agent types `smith-fixer` and
    `anderson-fixer`, names `smith-fixer-<pr>` and `anderson-fixer-<pr>`.
-   Per the spawn rules in `commands/implement.md` (do NOT use the
-   `Agent` tool; use natural-language team-creation). Verify both
-   teammates came up before registering.
+   Per the spawn rules in `commands/implement.md`: two named `Agent`
+   calls in one message, never a nameless one-shot. Verify both
+   spawn results before registering.
 
 7. Register the pair:
    ```
@@ -273,9 +275,10 @@ Examples:
 
 ## Operational caveats
 
-The dispatch flow above relies on the agent-teams spawn API, which is
-LLM-driven (Claude composes the spawn prompt and the team API
-handles spawn-and-track). The watchdog's correctness depends on:
+The dispatch flow above relies on named `Agent`-tool teammate spawns,
+which are LLM-driven (Claude composes the spawn prompt; the implicit
+session team handles tracking and the mailbox). The watchdog's
+correctness depends on:
 
 - The agent (you, when this skill is loaded) actually invoking
   `active_smiths.sh add` after each spawn — without that, the cap can

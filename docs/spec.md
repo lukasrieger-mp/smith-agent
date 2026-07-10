@@ -1580,8 +1580,11 @@ specifically for Smith.
 
 ### 18.1 Prerequisites
 
-- **Claude Code ≥ v2.1.32.** Agent teams are unavailable on older versions.
-  Verify with `claude --version`.
+- **Claude Code ≥ v2.1.178.** Agent teams are unavailable before v2.1.32;
+  between v2.1.32 and v2.1.177 they used the now-removed `TeamCreate` /
+  `TeamDelete` tools. From v2.1.178 every session has one implicit team and
+  teammates are spawned via the `Agent` tool's `name` parameter — the
+  mechanics in this chapter assume that model. Verify with `claude --version`.
 - **Experimental flag enabled.** Add to `~/.claude/settings.json`:
   ```json
   {
@@ -1597,8 +1600,9 @@ specifically for Smith.
 
 ### 18.2 Team composition over a lifetime
 
-The watchdog session creates **one team** and remains its lead for the
-session's lifetime (Claude Code limit: "Lead is fixed"). During that
+The watchdog session **is** the team: every Claude Code session carries one
+implicit team, with the session as its fixed lead (Claude Code limit: "Lead
+is fixed"; no explicit team-creation step exists). During the session's
 lifetime, teammates are spawned and shut down dynamically — at any moment,
 the active set might be `{}`, `{Smith1, Anderson1}`, `{Smith1, Anderson1,
 Smith2, Anderson2}`, etc., bounded by the 2-Smith cap (Section 5.5).
@@ -1610,12 +1614,14 @@ tickets and PR numbers.
 
 ### 18.3 Spawn prompt structure
 
-When the lead spawns a Smith+Anderson pair for a ticket, it issues two team
-spawn requests:
+When the lead spawns a Smith+Anderson pair for a ticket, it issues two
+`Agent` tool calls in one message (concurrent spawn). Each call carries the
+agent type as `subagent_type`, the deterministic teammate `name`, and the
+spawn prompt — the `name` is what makes the spawn a long-lived teammate on
+the implicit team rather than a one-shot subagent:
 
 ```
-Spawn a Smith teammate (using the smith-impl agent type) named "smith-impl-APP-1234"
-with this prompt:
+Agent(subagent_type: "smith-impl", name: "smith-impl-APP-1234", prompt:
   Mode: ticket
   Ticket: APP-1234
   Worktree: .smith/worktrees/app-1234/
@@ -1623,10 +1629,9 @@ with this prompt:
   Dry-run: false
   Your Anderson is "anderson-impl-APP-1234"; address review requests to him.
   Execute `smith:claim`, `smith:enrich`, `smith:pipeline`, `smith:pr` per spec
-  Section 8. Send {type: smith.outcome, ...} to the lead via mailbox when done.
+  Section 8. Send {type: smith.outcome, ...} to the lead via mailbox when done.)
 
-Spawn an Anderson teammate (using the anderson-impl agent type) named
-"anderson-impl-APP-1234" with this prompt:
+Agent(subagent_type: "anderson-impl", name: "anderson-impl-APP-1234", prompt:
   You are reviewing Smith's work on APP-1234.
   Worktree: .smith/worktrees/app-1234/
   Wait for review requests from "smith-impl-APP-1234" via mailbox.
@@ -1634,7 +1639,7 @@ Spawn an Anderson teammate (using the anderson-impl agent type) named
   Reply with the documented JSON schema.
   Stay alive until the lead sends a shutdown request — Smith sends one
   review.request per gate, so an empty inbox between gates is normal.
-  Do not self-terminate.
+  Do not self-terminate.)
 ```
 
 For a fixer-pair dispatch, the watchdog spawns `smith-fixer` (not

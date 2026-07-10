@@ -9,17 +9,21 @@ implementer team for a specific JIRA ticket. This is the operator-driven
 manual override path; the watchdog monitors (Section 5.6 of the spec)
 trigger the same flow automatically when new candidates appear.
 
-> **HARD RULE — spawning is via agent-teams, never the Agent/Task tool.**
-> Smith and Anderson must be created as long-lived teammates through
-> natural-language team creation (see "Spawn the teammate pair" below).
-> Do NOT use the `Agent` or `Task` tool to spawn them — that produces
-> one-shot subagents that die after their first reply, breaking the
-> multi-turn mailbox protocol and leaving Smith self-reviewing. A
-> PreToolUse hook (`hook_agent_teams_guard.sh`) will deny any
-> `Agent`/`Task` call whose `subagent_type` is `smith-impl`,
-> `anderson-impl`, `smith-fixer`, or `anderson-fixer`. If you see that
-> denial, re-issue the dispatch using team-creation phrasing; don't try
-> to work around the hook.
+> **HARD RULE — Smith and Anderson are spawned as named teammates,
+> never as anonymous one-shot subagents.** Spawn each via the `Agent`
+> tool with an explicit `name` parameter (see "Spawn the teammate pair"
+> below). With agent-teams enabled, every session has one implicit
+> team; a named Agent spawn creates a long-lived teammate on it that
+> persists across mailbox round-trips and triggers the `TeammateIdle`
+> hook. An Agent call *without* a `name` produces a one-shot subagent
+> that dies after its first reply — that breaks the multi-turn mailbox
+> protocol and leaves Smith self-reviewing. Never spawn Smith or
+> Anderson without a `name`.
+>
+> (History: before Claude Code v2.1.178, teammates were created via
+> `TeamCreate` / natural-language team creation and the Agent tool was
+> forbidden here. Those tools no longer exist — the named Agent spawn
+> IS the agent-teams mechanism now.)
 
 ## Arguments
 
@@ -128,28 +132,20 @@ git branch -D task/<ticket-lowercased>-<slug>   # local-only; never pushed in dr
 
 ## Spawn the teammate pair
 
-**Do NOT use the `Agent` tool here.** That spawns one-shot subagents
-that finish their first turn and exit — Anderson would die before the
-spec gate. This pair must be spawned via the **agent-teams** mechanism,
-which produces long-lived teammates that persist across mailbox
-round-trips and trigger the `TeammateIdle` hook.
+Spawn both teammates via the **`Agent` tool**, one call per teammate,
+**both calls in the same message** so they come up concurrently. Each
+call MUST carry:
 
-The agent-teams spawn is initiated by natural language. Phrase your
-request to create a team with two teammates. Example phrasing:
-
-> Create an agent team with two teammates for ticket APP-XXXX:
->
-> - First teammate uses agent type `smith-impl`, named `smith-impl-APP-XXXX`,
->   with the spawn prompt below.
-> - Second teammate uses agent type `anderson-impl`, named
->   `anderson-impl-APP-XXXX`, with the spawn prompt below.
->
-> Both must persist for the lifetime of this ticket. Do not shut them
-> down on idle.
+- `subagent_type`: `smith-impl` / `anderson-impl`
+- `name`: `smith-impl-<ticket>` / `anderson-impl-<ticket>` — the
+  `name` parameter is what makes the spawn a long-lived teammate on
+  the session's implicit team (addressable via `SendMessage`) instead
+  of a one-shot subagent. **An Agent call without `name` is a bug.**
+- `prompt`: the spawn prompt below.
 
 The spawn-prompt structure is shown below in full — don't go fetch the
-spec for this; everything needed is right here. Spawn two teammates
-with deterministic names so the operator can reference them later.
+spec for this; everything needed is right here. Use the deterministic
+names above so the operator can reference the teammates later.
 
 **Both must be spawned.** Smith requires a paired Anderson to do
 adversarial review at every gate; without Anderson, Smith aborts the
@@ -158,11 +154,6 @@ Spawning only Smith is not a valid dispatch — it just burns a Smith
 slot to no effect. The two names must match exactly between Smith's
 spawn prompt ("Your Anderson is: ...") and Anderson's actual spawn
 name; a mismatched name is the same as a missing Anderson.
-
-**If you find yourself using the `Agent` tool**, stop and re-read this
-section. The `Agent` tool is always available regardless of whether
-agent-teams is enabled; you can reach for it by reflex. That is the
-failure mode this paragraph exists to prevent.
 
 **Teammate 1 — Mr. Smith**, agent type `smith-impl`, name `smith-impl-<ticket>`:
 
@@ -188,13 +179,14 @@ failure mode this paragraph exists to prevent.
 > per gate). After replying to one, wait silently for the next — do
 > not self-terminate. An empty inbox is not "done"; it's "waiting".
 
-**Verify both came up** before considering dispatch successful. After
-the two spawn calls, list active teammates and confirm you see both
-`smith-impl-<ticket>` and `anderson-impl-<ticket>`. If either is missing, retry
-that one spawn. If after retry one is still missing, do not let Smith
-proceed — tear down the half-spawned dispatch via `/smith:abort
-<ticket>` and report `{result: "error", reason: "teammate pair spawn
-incomplete"}` to the operator.
+**Verify both came up** before considering dispatch successful. Both
+`Agent` calls must return a successful spawn result naming the
+teammate (a failed or denied call means that teammate does not exist).
+If either spawn failed, retry that one spawn — re-issuing the same
+`Agent` call with the same `name` is safe. If after retry one is
+still missing, do not let Smith proceed — tear down the half-spawned
+dispatch via `/smith:abort <ticket>` and report `{result: "error",
+reason: "teammate pair spawn incomplete"}` to the operator.
 
 Add a team task: `implement <ticket>`, assigned to Smith.
 
@@ -253,8 +245,8 @@ reaction-skill runbook loaded. Arming closes the loop.
    ```
    (Invoke via the `Skill` tool with `skill: watchdog`. After load,
    the dispatch sub-routines in `skills/watchdog/SKILL.md` apply for
-   the rest of the session — including the `HARD RULE` about
-   agent-teams spawning.)
+   the rest of the session — including the `HARD RULE` about spawning
+   teammates as *named* Agent calls, never anonymous one-shots.)
 
 3. Print a one-line confirmation in the operator output:
    ```

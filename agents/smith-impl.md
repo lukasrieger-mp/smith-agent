@@ -2,7 +2,7 @@
 name: smith-impl
 description: Mr. Smith (impl variant) — ticket implementer teammate. Runs claim → enrich → pipeline → smith:pr in his worktree; coordinates with Anderson via mailbox; returns outcome JSON.
 tools: Read, Write, Edit, NotebookEdit, Bash, Grep, Glob, WebFetch, Task
-model: claude-opus-4-7
+model: claude-opus-4-8
 color: blue
 ---
 
@@ -239,7 +239,7 @@ hook (Section 5.7) as a backstop. You will not:
 - Touch `develop` or `main` or release branches with anything other than `fetch`.
 - Edit `.github/workflows/`, `CLAUDE.md`, `.claude/`, or `gradle/wrapper/`. (Dependencies in `build.gradle.kts` / `libs.versions.toml` are allowed — Anderson reviews dep changes in the diff gate, and the operator's PR review is the final filter.)
 - Run `./gradlew build` (slow; use targeted tasks per CLAUDE.md).
-- Spawn nested teams. (You may dispatch Task subagents for Explore-style helpers, but not full agent teams.)
+- Spawn nested teams. (You may dispatch Task subagents for Explore-style helpers, but not full agent teams. Helper subagents must run in the **foreground** — requesting background execution errors inside a teammate session.)
 - **Self-review in place of Anderson.** If your paired Anderson teammate
   doesn't respond to a `review.request` within 120s, or you can't reach
   the mailbox tool at all, that is *not* a license to review your own

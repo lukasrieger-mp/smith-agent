@@ -107,8 +107,10 @@ state, and clears the active-smiths entry. Argument is a JIRA key
 | `anderson-fixer` | Validates `smith-fixer`'s dismissal decisions; runs final diff review |
 
 Pairs are spawned as long-lived agent-team teammates, never as
-one-shot subagents. A `PreToolUse` hook (`agent-teams-guard`)
-enforces this.
+one-shot subagents: each is created via the `Agent` tool with an
+explicit `name`, which places it on the session's implicit team
+(Claude Code ≥ 2.1.178 — the former `TeamCreate` flow no longer
+exists).
 
 ### Skills
 
@@ -139,7 +141,6 @@ one of the entry-point commands writes it.
 | Hook | Purpose |
 |---|---|
 | `bash-guard` (PreToolUse) | Denies destructive commands (`rm -rf`, `git push --force`, `git reset --hard`, `gh pr merge/close`, etc.) |
-| `agent-teams-guard` (PreToolUse) | Denies `Task` calls whose `subagent_type` is one of the four Smith/Anderson agent types — they must be spawned via agent-teams |
 | `keep-anderson-alive` (TeammateIdle) | Re-prompts Anderson teammates between mailbox round-trips so they don't self-terminate |
 | SessionStart | Wipes `.smith/state/watchdog-mode` so autonomous behaviour is per-session opt-in |
 

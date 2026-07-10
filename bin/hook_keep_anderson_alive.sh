@@ -13,14 +13,40 @@
 # verification on the lead side catches missing-from-the-start cases;
 # this hook catches the mid-run shutdown case.
 #
-# Available env vars (per Claude Code hook env):
-#   CLAUDE_TEAMMATE_NAME  — the teammate's name (e.g. anderson-impl-app-5601)
-#   CLAUDE_TEAMMATE_TYPE  — the teammate's agent type (e.g. anderson-impl)
+# Identity detection: hooks receive a JSON payload on stdin. Since the
+# Claude Code v2.1.178 agent-teams rework, the exact teammate fields in
+# the TeammateIdle payload are not documented, so we probe several
+# plausible keys and fall back to the pre-rework CLAUDE_TEAMMATE_NAME /
+# CLAUDE_TEAMMATE_TYPE env vars. The raw payload is captured once per
+# session to .smith/state/teammate-idle-payload.json so the real field
+# names can be verified from a live run (and this probe list trimmed).
 
 set -uo pipefail
 
-name="${CLAUDE_TEAMMATE_NAME:-}"
-type="${CLAUDE_TEAMMATE_TYPE:-}"
+payload=""
+if [[ ! -t 0 ]]; then
+  payload=$(cat 2>/dev/null || true)
+fi
+
+# One-time payload probe for empirical verification. Best-effort; never
+# let it fail the hook.
+probe=".smith/state/teammate-idle-payload.json"
+if [[ -n "$payload" && ! -f "$probe" ]] && mkdir -p "$(dirname "$probe")" 2>/dev/null; then
+  printf '%s\n' "$payload" > "$probe" 2>/dev/null || true
+fi
+
+# Candidate keys for the teammate's name and agent type, in order of
+# plausibility. jq's `//` chain returns the first non-null/non-false hit.
+name=""
+type=""
+if [[ -n "$payload" ]] && command -v jq >/dev/null 2>&1; then
+  name=$(jq -r '(.teammate_name // .teammate.name // .agent_name // .name // empty)' <<<"$payload" 2>/dev/null || true)
+  type=$(jq -r '(.teammate_type // .teammate.agent_type // .agent_type // .subagent_type // empty)' <<<"$payload" 2>/dev/null || true)
+fi
+
+# Fallback: pre-v2.1.178 hook env vars (kept in case they still exist).
+[[ -z "$name" ]] && name="${CLAUDE_TEAMMATE_NAME:-}"
+[[ -z "$type" ]] && type="${CLAUDE_TEAMMATE_TYPE:-}"
 
 is_anderson=0
 case "$type" in

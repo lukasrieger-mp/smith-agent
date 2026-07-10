@@ -9,15 +9,6 @@
             "command": "${CLAUDE_PLUGIN_ROOT}/bin/hook_bash_guard.sh"
           }
         ]
-      },
-      {
-        "matcher": "Task",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/hook_agent_teams_guard.sh"
-          }
-        ]
       }
     ],
     "SessionStart": [
